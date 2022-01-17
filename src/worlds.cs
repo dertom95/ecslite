@@ -7,6 +7,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using GameAPI;
+using LeoTest;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -22,7 +24,7 @@ namespace Leopotam.EcsLite {
         int _entitiesCount;
         int[] _recycledEntities;
         int _recycledEntitiesCount;
-        IEcsPool[] _pools;
+        public IEcsPool[] _pools;
         int _poolsCount;
         readonly int _poolDenseSize;
         readonly Dictionary<Type, IEcsPool> _poolHashes;
@@ -30,6 +32,9 @@ namespace Leopotam.EcsLite {
         readonly List<EcsFilter> _allFilters;
         List<EcsFilter>[] _filtersByIncludedComponents;
         List<EcsFilter>[] _filtersByExcludedComponents;
+        public List<int> newEntities = new List<int>();
+        public List<int> removedEntities = new List<int>();
+        public HashSet<IEcsPool> dirtyPools = new HashSet<IEcsPool>();        
         Mask[] _masks;
         int _masksCount;
 
@@ -132,15 +137,15 @@ namespace Leopotam.EcsLite {
             return !_destroyed;
         }
 
-        public int NewEntity () {
+        public int NewEntity (int id=-1) {
             int entity;
-            if (_recycledEntitiesCount > 0) {
+            if (id==-1 && _recycledEntitiesCount > 0) {
                 entity = _recycledEntities[--_recycledEntitiesCount];
                 ref var entityData = ref Entities[entity];
                 entityData.Gen = (short) -entityData.Gen;
             } else {
                 // new entity.
-                if (_entitiesCount == Entities.Length) {
+                if (_entitiesCount == Entities.Length || id >= Entities.Length) {
                     // resize entities and component pools.
                     var newSize = _entitiesCount << 1;
                     Array.Resize (ref Entities, newSize);
@@ -156,7 +161,14 @@ namespace Leopotam.EcsLite {
                     }
 #endif
                 }
-                entity = _entitiesCount++;
+                if (id == -1) {
+                    entity = _entitiesCount++;
+                } else {
+                    entity = id;
+                    if (entity >= _entitiesCount) {
+                        _entitiesCount = entity + 1;
+                    }
+                }
                 Entities[entity].Gen = 1;
             }
 #if DEBUG
@@ -167,6 +179,7 @@ namespace Leopotam.EcsLite {
                 _eventListeners[ii].OnEntityCreated (entity);
             }
 #endif
+            newEntities.Add(entity);
             return entity;
         }
 
@@ -177,6 +190,7 @@ namespace Leopotam.EcsLite {
             }
 #endif
             ref var entityData = ref Entities[entity];
+            removedEntities.Add(entity);
             if (entityData.Gen < 0) {
                 return;
             }
@@ -207,6 +221,7 @@ namespace Leopotam.EcsLite {
             }
 #endif
         }
+
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public int GetComponentsCount (int entity) {

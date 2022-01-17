@@ -5,7 +5,10 @@
 // ----------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using _ComponentStructs;
+using LeoTest;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -21,6 +24,7 @@ namespace Leopotam.EcsLite {
         void SetRaw (int entity, object dataRaw);
         int GetId ();
         Type GetComponentType ();
+        public void SendToNetwork(INetwork network,int[] entities=null);
     }
 
     public interface IEcsAutoReset<T> where T : struct {
@@ -42,6 +46,8 @@ namespace Leopotam.EcsLite {
         int _denseItemsCount;
         int[] _recycledItems;
         int _recycledItemsCount;
+        bool _isSerializable = false;
+        HashSet<int> dirtyEntities = new HashSet<int>();        
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
@@ -50,6 +56,7 @@ namespace Leopotam.EcsLite {
             _type = typeof (T);
             _world = world;
             _id = id;
+            _isSerializable = _type.IsMsgPackSerializable();
             _denseItems = new T[denseCapacity + 1];
             _sparseItems = new int[sparseCapacity];
             _denseItemsCount = 1;
@@ -117,6 +124,10 @@ namespace Leopotam.EcsLite {
             if (_sparseItems[entity] <= 0) { throw new Exception ("Component not attached to entity."); }
 #endif
             _denseItems[_sparseItems[entity]] = (T) dataRaw;
+            if (dataRaw is IEntityID ed){
+                ed.Entity = entity;
+            }
+            MakeDirty(entity);
         }
 
         void IEcsPool.AddRaw (int entity, object dataRaw) {
@@ -157,7 +168,12 @@ namespace Leopotam.EcsLite {
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
             _world.RaiseEntityChangeEvent (entity);
 #endif
-            return ref _denseItems[idx];
+            ref var data = ref _denseItems[idx];;
+            if (data is IEntityID ed){
+                ed.Entity = entity;
+            }
+            MakeDirty(entity);            
+            return ref data;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -204,6 +220,43 @@ namespace Leopotam.EcsLite {
                 }
             }
         }
+
+        public void MakeDirty(int entityId) {
+            dirtyEntities.Add(entityId);
+            _world.dirtyPools.Add(this);
+        }
+
+        public void ClearDirtyFlags(){
+            dirtyEntities.Clear();
+        }
+
+        public void SendToNetwork(INetwork network,int[] entities=null) {
+            if (!_isSerializable){
+                return;
+            }
+            
+            if (dirtyEntities.Count == 0 || entities!=null) {
+                return;
+            }
+
+            if (entities!=null){
+                for (int i=0,count=entities.Length;i<count;i++){
+                    int entity = entities[i];
+                    ref var comp = ref Get(entity);
+                    byte[] payload = MessagePack.MessagePackSerializer.Serialize(comp);
+                    network.SendComponent(entity, _id, payload);
+
+                    dirtyEntities.Remove(entity);
+                }
+            } else {
+                foreach (int entity in dirtyEntities) {
+                    ref var comp = ref Get(entity);
+                    byte[] payload = MessagePack.MessagePackSerializer.Serialize(comp);
+                    network.SendComponent(entity, _id, payload);
+                }
+                ClearDirtyFlags();
+            }
+        }        
 
         delegate void AutoResetHandler (ref T component);
     }

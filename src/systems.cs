@@ -167,7 +167,7 @@ namespace Leopotam.EcsLite {
                 _runSystems[i].Run (this);
 #if DEBUG
                 var worldName = CheckForLeakedEntities ();
-                if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType ().Name}.Run()."); }
+                //if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType ().Name}.Run()."); }
 #endif
             }
         }
