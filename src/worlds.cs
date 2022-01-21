@@ -34,6 +34,7 @@ namespace Leopotam.EcsLite {
         List<EcsFilter>[] _filtersByExcludedComponents;
         public List<int> newEntities = new List<int>();
         public List<int> removedEntities = new List<int>();
+        public bool isServer = false;
         public HashSet<IEcsPool> dirtyPools = new HashSet<IEcsPool>();        
         Mask[] _masks;
         int _masksCount;
@@ -179,7 +180,9 @@ namespace Leopotam.EcsLite {
                 _eventListeners[ii].OnEntityCreated (entity);
             }
 #endif
-            newEntities.Add(entity);
+            if (isServer){
+                newEntities.Add(entity);
+            } 
             return entity;
         }
 
@@ -190,7 +193,9 @@ namespace Leopotam.EcsLite {
             }
 #endif
             ref var entityData = ref Entities[entity];
-            removedEntities.Add(entity);
+            if (isServer){
+                removedEntities.Add(entity);
+            }
             if (entityData.Gen < 0) {
                 return;
             }
@@ -483,7 +488,12 @@ namespace Leopotam.EcsLite {
                     }
                 }
             }
-        }         
+        }
+
+        public void SetServerMode(bool serverMode){
+            this.isServer = serverMode;
+        }
+
 
         public struct Config {
             public int Entities;

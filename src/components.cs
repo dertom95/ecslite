@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using _ComponentStructs;
 using LeoTest;
+using NetMQServer;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -48,6 +49,7 @@ namespace Leopotam.EcsLite {
         int _recycledItemsCount;
         bool _isSerializable = false;
         HashSet<int> dirtyEntities = new HashSet<int>();        
+        HashSet<int> removeEntities = new HashSet<int>();
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
@@ -127,7 +129,7 @@ namespace Leopotam.EcsLite {
             if (dataRaw is IEntityID ed){
                 ed.Entity = entity;
             }
-            MakeDirty(entity);
+            MarkDirty(entity);
         }
 
         void IEcsPool.AddRaw (int entity, object dataRaw) {
@@ -172,7 +174,7 @@ namespace Leopotam.EcsLite {
             if (data is IEntityID ed){
                 ed.Entity = entity;
             }
-            MakeDirty(entity);            
+            MarkDirty(entity);            
             return ref data;
         }
 
@@ -194,6 +196,9 @@ namespace Leopotam.EcsLite {
         }
 
         public void Del (int entity) {
+            if (!_world.IsEntityAliveInternal (entity) || !Has(entity)){
+                return;
+            }
 #if DEBUG
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
@@ -212,6 +217,7 @@ namespace Leopotam.EcsLite {
                 sparseData = 0;
                 ref var entityData = ref _world.Entities[entity];
                 entityData.ComponentsCount--;
+                removeEntities.Add(entity);
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
                 _world.RaiseEntityChangeEvent (entity);
 #endif
@@ -221,7 +227,10 @@ namespace Leopotam.EcsLite {
             }
         }
 
-        public void MakeDirty(int entityId) {
+        public void MarkDirty(int entityId) {
+            if (!_world.isServer){
+                return;
+            }
             dirtyEntities.Add(entityId);
             _world.dirtyPools.Add(this);
         }
@@ -231,6 +240,10 @@ namespace Leopotam.EcsLite {
         }
 
         public void SendToNetwork(INetwork network,int[] entities=null) {
+            if (!_world.isServer){
+                // don't send ecs if not server
+                return;
+            }
             if (!_isSerializable){
                 return;
             }
@@ -250,12 +263,23 @@ namespace Leopotam.EcsLite {
                 }
             } else {
                 foreach (int entity in dirtyEntities) {
-                    ref var comp = ref Get(entity);
-                    byte[] payload = MessagePack.MessagePackSerializer.Serialize(comp);
-                    network.SendComponent(entity, _id, payload);
+                    if (Has(entity)){
+                        ref var comp = ref Get(entity);
+                        byte[] payload = MessagePack.MessagePackSerializer.Serialize(comp);
+                        network.SendComponent(entity, _id, payload);
+                    } else {
+                        // removed already?
+                        var removed = removeEntities.Contains(entity);
+                        int a=0;
+                    }
                 }
                 ClearDirtyFlags();
             }
+
+            foreach (int entity in removeEntities){
+                network.SentRemoveComponent(_id,entity);
+            }
+            removeEntities.Clear();
         }        
 
         delegate void AutoResetHandler (ref T component);
