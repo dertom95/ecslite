@@ -51,9 +51,9 @@ namespace Leopotam.EcsLite {
             _eventListeners.Remove (listener);
         }
 
-        public void RaiseEntityChangeEvent (int entity) {
+        public void RaiseEntityChangeEvent (int entity,int poolId,bool added) {
             for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityChanged (entity);
+                _eventListeners[ii].OnEntityChanged (entity,poolId,added);
             }
         }
 #endif
@@ -555,7 +555,7 @@ namespace Leopotam.EcsLite {
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
     public interface IEcsWorldEventListener {
         void OnEntityCreated (int entity);
-        void OnEntityChanged (int entity);
+        void OnEntityChanged (int entity, int poolId, bool added);
         void OnEntityDestroyed (int entity);
         void OnFilterCreated (EcsFilter filter);
         void OnWorldResized (int newSize);
