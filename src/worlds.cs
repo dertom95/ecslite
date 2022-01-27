@@ -33,28 +33,49 @@ namespace Leopotam.EcsLite {
         Mask[] _masks;
         int _masksCount;
 
-        bool _destroyed;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-        List<IEcsWorldEventListener> _eventListeners;
-
-        public void AddEventListener (IEcsWorldEventListener listener) {
-#if DEBUG
-            if (listener == null) { throw new Exception ("Listener is null."); }
-#endif
-            _eventListeners.Add (listener);
+        HashSet<int> sendablePool = new HashSet<int>();        
+        HashSet<int> savablePool = new HashSet<int>();        
+        public void AddPool(int poolId, bool isSavable, bool isSendable)
+        {
+            if (isSavable)
+            {
+                savablePool.Add(poolId);
+            }
+            if (isSendable)
+            {
+                sendablePool.Add(poolId);
+            }
         }
 
-        public void RemoveEventListener (IEcsWorldEventListener listener) {
+        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+        public bool IsSavablePool(int poolId){
+            return savablePool.Contains(poolId);
+        }
+        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+        public bool IsSendablePool(int poolId){
+            return sendablePool.Contains(poolId);
+        }        
+
+        bool _destroyed;
+#if DEBUG || LEOECSLITE_WORLD_EVENTS
+        internal IEcsWorldEventListener _eventListener;
+
+        public void SetEventListener (IEcsWorldEventListener listener) {
 #if DEBUG
-            if (listener == null) { throw new Exception ("Listener is null."); }
+            if (_eventListener != null) { throw new Exception ("Listener is already set."); }
 #endif
-            _eventListeners.Remove (listener);
+            _eventListener=listener;
+        }
+
+        public void RemoveEventListener () {
+#if DEBUG
+            if (_eventListener == null) { throw new Exception ("Not set at all! "); }
+#endif
+            _eventListener=null;
         }
 
         public void RaiseEntityChangeEvent (int entity,int poolId,bool added) {
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityChanged (entity,poolId,added);
-            }
+            _eventListener?.OnEntityChanged(entity,poolId,added);
         }
 #endif
 #if DEBUG
@@ -97,9 +118,7 @@ namespace Leopotam.EcsLite {
             // masks.
             _masks = new Mask[64];
             _masksCount = 0;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-            _eventListeners = new List<IEcsWorldEventListener> (4);
-#endif
+
             _destroyed = false;
         }
 
@@ -120,11 +139,7 @@ namespace Leopotam.EcsLite {
             _allFilters.Clear ();
             _filtersByIncludedComponents = Array.Empty<List<EcsFilter>> ();
             _filtersByExcludedComponents = Array.Empty<List<EcsFilter>> ();
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (var ii = _eventListeners.Count - 1; ii >= 0; ii--) {
-                _eventListeners[ii].OnWorldDestroyed (this);
-            }
-#endif
+             _eventListener?.OnWorldDestroyed (this);
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -132,15 +147,15 @@ namespace Leopotam.EcsLite {
             return !_destroyed;
         }
 
-        public int NewEntity () {
+        public int NewEntity (int id=-1) {
             int entity;
-            if (_recycledEntitiesCount > 0) {
+            if (id==-1 && _recycledEntitiesCount > 0) {
                 entity = _recycledEntities[--_recycledEntitiesCount];
                 ref var entityData = ref Entities[entity];
                 entityData.Gen = (short) -entityData.Gen;
             } else {
                 // new entity.
-                if (_entitiesCount == Entities.Length) {
+                if (_entitiesCount == Entities.Length || id >= Entities.Length) {
                     // resize entities and component pools.
                     var newSize = _entitiesCount << 1;
                     Array.Resize (ref Entities, newSize);
@@ -150,25 +165,27 @@ namespace Leopotam.EcsLite {
                     for (int i = 0, iMax = _allFilters.Count; i < iMax; i++) {
                         _allFilters[i].ResizeSparseIndex (newSize);
                     }
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-                    for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                        _eventListeners[ii].OnWorldResized (newSize);
-                    }
-#endif
+                    _eventListener?.OnWorldResized (newSize);
+                    
                 }
-                entity = _entitiesCount++;
+                if (id == -1) {
+                    entity = _entitiesCount++;
+                } else {
+                    entity = id;
+                    if (entity >= _entitiesCount) {
+                        _entitiesCount = entity + 1;
+                    }
+                }
                 Entities[entity].Gen = 1;
             }
 #if DEBUG
             _leakedEntities.Add (entity);
 #endif
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityCreated (entity);
-            }
-#endif
+            _eventListener?.OnEntityCreated (entity);
+
             return entity;
         }
+
 
         public void DelEntity (int entity) {
 #if DEBUG
@@ -201,11 +218,7 @@ namespace Leopotam.EcsLite {
                 Array.Resize (ref _recycledEntities, _recycledEntitiesCount << 1);
             }
             _recycledEntities[_recycledEntitiesCount++] = entity;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnEntityDestroyed (entity);
-            }
-#endif
+            _eventListener?.OnEntityDestroyed (entity);
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -350,11 +363,7 @@ namespace Leopotam.EcsLite {
                     filter.AddEntity (i);
                 }
             }
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-            for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
-                _eventListeners[ii].OnFilterCreated (filter);
-            }
-#endif
+            _eventListener?.OnFilterCreated (filter);
             return (filter, true);
         }
 

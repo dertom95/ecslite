@@ -6,6 +6,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using Leopotam.EcsLite.Net;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -45,9 +46,17 @@ namespace Leopotam.EcsLite {
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
+        bool _isComponentTypeSendable = false;
+        bool _isComponentTypeSaveable = false;
+        static readonly Type iSendableType = typeof(IEcsSendable);
+        static readonly Type iSaveableType = typeof(IEcsSavable);
+
 
         internal EcsPool (EcsWorld world, int id, int denseCapacity, int sparseCapacity) {
             _type = typeof (T);
+            _isComponentTypeSendable = iSendableType.IsAssignableFrom(_type);
+            _isComponentTypeSaveable = iSaveableType.IsAssignableFrom(_type);
+            world.AddPool(id,_isComponentTypeSaveable,_isComponentTypeSendable);
             _world = world;
             _id = id;
             _denseItems = new T[denseCapacity + 1];
@@ -196,9 +205,7 @@ namespace Leopotam.EcsLite {
                 sparseData = 0;
                 ref var entityData = ref _world.Entities[entity];
                 entityData.ComponentsCount--;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
-                _world.RaiseEntityChangeEvent (entity, _id, false);
-#endif
+                _world._eventListener.OnEntityChanged(entity, _id, false);
                 if (entityData.ComponentsCount == 0) {
                     _world.DelEntity (entity);
                 }
