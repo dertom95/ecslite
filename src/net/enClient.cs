@@ -47,12 +47,12 @@ namespace Leopotam.EcsLite.Net
             ClientContext = CreateUserData();
         }
 
-        public void Start(){
+        public void Start(bool cacheIncomingData=false){
             client.OnReceive += HandleClientReceive;   
             if (forwardInternalMessages){
                 client.OnInternalReceive += HandleClientReceive;
             }         
-            client.Connect();
+            client.Connect(cacheIncomingData);
         }
 
 
