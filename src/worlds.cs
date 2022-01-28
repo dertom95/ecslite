@@ -417,6 +417,37 @@ namespace Leopotam.EcsLite {
             }
         }
 
+        public int TraverseTillHit(Func<int,bool> visitor,bool ignoreEmptyEntities=true){
+            for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
+                ref var entityData = ref Entities[i];
+                // should we skip empty entities here?
+                if (ignoreEmptyEntities && !(entityData.Gen > 0 || entityData.ComponentsCount >= 0)) {
+                    continue;
+                }
+                if (visitor(i)){
+                    return i;
+                }
+            }
+            return -1;
+        }        
+
+        public void TraverseEntities(Func<int,bool> visitor,List<int> result,bool ignoreEmptyEntities=true,int maxAmount=-1){
+            for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
+                ref var entityData = ref Entities[i];
+                // should we skip empty entities here?
+                if (ignoreEmptyEntities && entityData.Gen > 0 && entityData.ComponentsCount >= 0) {
+                    continue;
+                }
+                if (visitor(i)){
+                    result.Add(i);
+                    if (--maxAmount==0){
+                        return;
+                    }
+                }
+            }
+        }
+
+
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         bool IsMaskCompatible (Mask filterMask, int entity) {
             for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
@@ -553,7 +584,27 @@ namespace Leopotam.EcsLite {
                 }
                 _world._masks[_world._masksCount++] = this;
             }
+            
+            public int FindFirst()
+            {
+                var result = _world.TraverseTillHit((entity) => {
+                    return _world.IsMaskCompatible(this, entity);
+                });
+                return result;
+            }
+
+            public List<int> FindMany(int amount)
+            {
+                var result = new List<int>();
+                _world.TraverseEntities((entity) => {
+                    return _world.IsMaskCompatible(this, entity);
+                }, result);
+                return result;
+            }              
+
         }
+
+
 
         internal struct EntityData {
             public short Gen;
