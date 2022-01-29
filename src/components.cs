@@ -46,17 +46,20 @@ namespace Leopotam.EcsLite {
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
-        bool _isComponentTypeSendable = false;
+        bool _isComponentTypeSendableFromServer = false;
+        bool _isComponentTypeSendableFromClient = false;
         bool _isComponentTypeSaveable = false;
-        static readonly Type iSendableType = typeof(IEcsSendable);
+        static readonly Type iSendableFromServerType = typeof(IEcsSendableFromServer);
+        static readonly Type iSendableFromClientType = typeof(IEcsSendableFromClient);
         static readonly Type iSaveableType = typeof(IEcsSavable);
 
 
         internal EcsPool (EcsWorld world, int id, int denseCapacity, int sparseCapacity) {
             _type = typeof (T);
-            _isComponentTypeSendable = iSendableType.IsAssignableFrom(_type);
+            _isComponentTypeSendableFromServer = iSendableFromServerType.IsAssignableFrom(_type);
+            _isComponentTypeSendableFromClient = iSendableFromClientType.IsAssignableFrom(_type);
             _isComponentTypeSaveable = iSaveableType.IsAssignableFrom(_type);
-            world.AddPool(id,_isComponentTypeSaveable,_isComponentTypeSendable);
+            world.AddPool(id,_isComponentTypeSaveable,_isComponentTypeSendableFromServer,_isComponentTypeSendableFromClient);
             _world = world;
             _id = id;
             _denseItems = new T[denseCapacity + 1];

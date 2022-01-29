@@ -18,12 +18,15 @@ namespace Leopotam.EcsLite.Net
     {
         public const int MSG_ECS_NET_COMPONENT_CHANGED = 1100;
         public const int MSG_ECS_NET_COMPONENT_REMOVED = 1101;
+
+        public const int MSG_ECS_NET_DATA_FROM_CLIENT = 1102;
     }
 
     /// <summary>
     /// Decorator interface to indicate that this element should be send over the wire
     /// </summary>
-    public interface IEcsSendable { };
+    public interface IEcsSendableFromServer { };
+    public interface IEcsSendableFromClient { };
     public interface IEcsSavable { };
 
     [MessagePackObject]

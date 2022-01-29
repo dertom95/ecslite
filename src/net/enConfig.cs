@@ -40,7 +40,7 @@ namespace Leopotam.EcsLite.Net
         {
             var port = NextPort();
             var netMQServer = new NetworkLayer.NetMQ.NetMQServer(port);
-            var newServerInstance = new EcsServerInstance(netMQServer,world, new NetMQMetaData(port));
+            var newServerInstance = new EcsServerInstance(netMQServer,world, true,new NetMQMetaData(port));
             return newServerInstance;
         }
 

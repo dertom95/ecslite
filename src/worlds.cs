@@ -33,17 +33,22 @@ namespace Leopotam.EcsLite {
         Mask[] _masks;
         int _masksCount;
 
-        HashSet<int> sendablePool = new HashSet<int>();        
+        HashSet<int> sendableFromServerPoolIDs = new HashSet<int>();        
+        HashSet<int> sendableFromClientPoolIDs = new HashSet<int>();        
         HashSet<int> savablePool = new HashSet<int>();        
-        public void AddPool(int poolId, bool isSavable, bool isSendable)
+        public void AddPool(int poolId, bool isSavable, bool isSendableFromServer, bool isSendableFromClient)
         {
             if (isSavable)
             {
                 savablePool.Add(poolId);
             }
-            if (isSendable)
+            if (isSendableFromServer)
             {
-                sendablePool.Add(poolId);
+                sendableFromServerPoolIDs.Add(poolId);
+            }
+            if (isSendableFromClient)
+            {
+                sendableFromClientPoolIDs.Add(poolId);
             }
         }
 
@@ -52,9 +57,13 @@ namespace Leopotam.EcsLite {
             return savablePool.Contains(poolId);
         }
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public bool IsSendablePool(int poolId){
-            return sendablePool.Contains(poolId);
-        }        
+        public bool IsSendableFromServerPool(int poolId){
+            return sendableFromServerPoolIDs.Contains(poolId);
+        }   
+        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+        public bool IsSendableFromClientPool(int poolId){
+            return sendableFromClientPoolIDs.Contains(poolId);
+        }               
 
         bool _destroyed;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS

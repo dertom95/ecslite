@@ -56,6 +56,7 @@ namespace Leopotam.EcsLite.Net
         }
 
 
+        int counter=0;
         /// <summary>
         /// Incoming data from the server. e.g. new-entities, component-changed, ....
         /// </summary>
@@ -68,6 +69,7 @@ namespace Leopotam.EcsLite.Net
             bool handled = false;
             switch(dataId){
                 case IProtocol.MSG_ECS_NET_COMPONENT_CHANGED: 
+                    counter++;
                     byte[] frame =frames.PopFrame();
                     var msgChanged = MessagePackSerializer.Deserialize<MSGEntityChanged>(frame);
                     var pool = world.GetPoolById(msgChanged.poolId);
@@ -75,11 +77,14 @@ namespace Leopotam.EcsLite.Net
                     if (msgChanged.added){
                         if (!world.IsEntityAliveInternal(msgChanged.entityId)){
                             world.NewEntity(msgChanged.entityId);
+                            Console.WriteLine($"Client [{world}][{counter}]: newEntity:{msgChanged.entityId}");
                         }
                         var component = MessagePackSerializer.Deserialize(pool.GetComponentType(),frames.PopFrame());
                         if (pool.Has(msgChanged.entityId)){
+                            Console.WriteLine($"[{world}]: setRaw:entity[{counter}]:{msgChanged.entityId}|pid:{msgChanged.poolId}");
                             pool.SetRaw(msgChanged.entityId,component);
                         } else {
+                            Console.WriteLine($"[{world}]: AddRaw:entity[{counter}]:{msgChanged.entityId}|pid:{msgChanged.poolId}");
                             pool.AddRaw(msgChanged.entityId,component);
                         }
                         handled = true;
