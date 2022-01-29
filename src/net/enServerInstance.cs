@@ -61,6 +61,7 @@ namespace Leopotam.EcsLite.Net
             world.SetEventListener(this);
 
             MetaData = metaData;
+            server.OnReceive = HandleReceive;
         }
         
         public bool HandleReceive(IConnection con, int dataId, int dataValue, LinkedList<byte[]> pendingFrames){

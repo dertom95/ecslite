@@ -328,7 +328,7 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal bool IsEntityAliveInternal (int entity) {
+        public bool IsEntityAliveInternal (int entity) {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
         }
 
