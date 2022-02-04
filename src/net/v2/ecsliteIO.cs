@@ -78,7 +78,7 @@ namespace Leopotam.EcsLite.Net2
         /// <summary>
         /// Highlevel MessageHandling (MsgPack-Serialization)
         /// </summary>
-        private MessageInputOutput msgIO;        
+        public MessageInputOutput msgIO;        
 
         /// <summary>
         /// this 
@@ -294,6 +294,14 @@ namespace Leopotam.EcsLite.Net2
             acceptOutgoing.Add(pool.GetId());
             return this;
         }
+
+        public bool IsAcceptedOutgoing(int compId){
+            return acceptOutgoing.Contains(compId);
+        }
+        public bool IsAcceptedIncoming(int compId){
+            return acceptIncoming.Contains(compId);
+        }
+
         public EcsIO RegisterCommand<T>(ushort msgId){
             return RegisterCommand(msgId,typeof(T));
         }
