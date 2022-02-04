@@ -13,13 +13,16 @@ using Unity.IL2CPP.CompilerServices;
 #endif
 
 namespace Leopotam.EcsLite {
+    public interface IWithEntityID {
+        int EntityID {get;set;}
+    }
     public interface IEcsPool {
         void Resize (int capacity);
         bool Has (int entity);
         void Del (int entity);
-        void AddRaw (int entity, object dataRaw);
+        void AddRaw (int entity, IWithEntityID dataRaw);
         object GetRaw (int entity);
-        void SetRaw (int entity, object dataRaw);
+        void SetRaw (int entity, IWithEntityID dataRaw);
         int GetId ();
         Type GetComponentType ();
     }
@@ -32,7 +35,7 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class EcsPool<T> : IEcsPool where T : struct {
+    public sealed class EcsPool<T> : IEcsPool where T : struct,IWithEntityID {
         readonly Type _type;
         readonly EcsWorld _world;
         readonly int _id;
@@ -46,20 +49,9 @@ namespace Leopotam.EcsLite {
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
-        bool _isComponentTypeSendableFromServer = false;
-        bool _isComponentTypeSendableFromClient = false;
-        bool _isComponentTypeSaveable = false;
-        static readonly Type iSendableFromServerType = typeof(IEcsSendableFromServer);
-        static readonly Type iSendableFromClientType = typeof(IEcsSendableFromClient);
-        static readonly Type iSaveableType = typeof(IEcsSavable);
-
 
         internal EcsPool (EcsWorld world, int id, int denseCapacity, int sparseCapacity) {
             _type = typeof (T);
-            _isComponentTypeSendableFromServer = iSendableFromServerType.IsAssignableFrom(_type);
-            _isComponentTypeSendableFromClient = iSendableFromClientType.IsAssignableFrom(_type);
-            _isComponentTypeSaveable = iSaveableType.IsAssignableFrom(_type);
-            world.AddPool(id,_isComponentTypeSaveable,_isComponentTypeSendableFromServer,_isComponentTypeSendableFromClient);
             _world = world;
             _id = id;
             _denseItems = new T[denseCapacity + 1];
@@ -123,18 +115,20 @@ namespace Leopotam.EcsLite {
             return Get (entity);
         }
 
-        void IEcsPool.SetRaw (int entity, object dataRaw) {
+        void IEcsPool.SetRaw (int entity, IWithEntityID dataRaw) {
 #if DEBUG
             if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data."); }
             if (_sparseItems[entity] <= 0) { throw new Exception ("Component not attached to entity."); }
 #endif
+            dataRaw.EntityID=entity;
             _denseItems[_sparseItems[entity]] = (T) dataRaw;
         }
 
-        void IEcsPool.AddRaw (int entity, object dataRaw) {
+        void IEcsPool.AddRaw (int entity, IWithEntityID dataRaw) {
 #if DEBUG
             if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data."); }
 #endif
+            dataRaw.EntityID=entity;
             ref var data = ref Add (entity);
             data = (T) dataRaw;
         }

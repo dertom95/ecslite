@@ -33,37 +33,6 @@ namespace Leopotam.EcsLite {
         Mask[] _masks;
         int _masksCount;
 
-        HashSet<int> sendableFromServerPoolIDs = new HashSet<int>();        
-        HashSet<int> sendableFromClientPoolIDs = new HashSet<int>();        
-        HashSet<int> savablePool = new HashSet<int>();        
-        public void AddPool(int poolId, bool isSavable, bool isSendableFromServer, bool isSendableFromClient)
-        {
-            if (isSavable)
-            {
-                savablePool.Add(poolId);
-            }
-            if (isSendableFromServer)
-            {
-                sendableFromServerPoolIDs.Add(poolId);
-            }
-            if (isSendableFromClient)
-            {
-                sendableFromClientPoolIDs.Add(poolId);
-            }
-        }
-
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public bool IsSavablePool(int poolId){
-            return savablePool.Contains(poolId);
-        }
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public bool IsSendableFromServerPool(int poolId){
-            return sendableFromServerPoolIDs.Contains(poolId);
-        }   
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public bool IsSendableFromClientPool(int poolId){
-            return sendableFromClientPoolIDs.Contains(poolId);
-        }               
 
         bool _destroyed;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
@@ -250,7 +219,7 @@ namespace Leopotam.EcsLite {
             return Entities.Length;
         }
 
-        public EcsPool<T> GetPool<T> () where T : struct {
+        public EcsPool<T> GetPool<T> () where T : struct,IWithEntityID {
             var poolType = typeof (T);
             if (_poolHashes.TryGetValue (poolType, out var rawPool)) {
                 return (EcsPool<T>) rawPool;
@@ -303,7 +272,7 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public Mask Filter<T> () where T : struct {
+        public Mask Filter<T> () where T : struct,IWithEntityID {
             var mask = _masksCount > 0 ? _masks[--_masksCount] : new Mask (this);
             return mask.Inc<T> ();
         }
@@ -536,7 +505,7 @@ namespace Leopotam.EcsLite {
             }
 
             [MethodImpl (MethodImplOptions.AggressiveInlining)]
-            public Mask Inc<T> () where T : struct {
+            public Mask Inc<T> () where T : struct,IWithEntityID {
                 var poolId = _world.GetPool<T> ().GetId ();
 #if DEBUG
                 if (_built) { throw new Exception ("Cant change built mask."); }
@@ -552,7 +521,7 @@ namespace Leopotam.EcsLite {
             [UnityEngine.Scripting.Preserve]
 #endif
             [MethodImpl (MethodImplOptions.AggressiveInlining)]
-            public Mask Exc<T> () where T : struct {
+            public Mask Exc<T> () where T : struct,IWithEntityID {
                 var poolId = _world.GetPool<T> ().GetId ();
 #if DEBUG
                 if (_built) { throw new Exception ("Cant change built mask."); }
