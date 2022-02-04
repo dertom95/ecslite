@@ -294,15 +294,16 @@ namespace Leopotam.EcsLite.Net2
             acceptOutgoing.Add(pool.GetId());
             return this;
         }
-        public void RegisterCommand<T>(ushort msgId){
-            RegisterCommand(msgId,typeof(T));
+        public EcsIO RegisterCommand<T>(ushort msgId){
+            return RegisterCommand(msgId,typeof(T));
         }
 
-        public void RegisterCommand(ushort msgId,Type msgType){
+        public EcsIO RegisterCommand(ushort msgId,Type msgType){
             if (!msgIO.IsMappingIDAvailable(msgId)){
                 throw new Exception("mapping-id already taken!");
             }
             msgIO.AddMapping(msgId,msgType);
+            return this;
         }
 
         public void ApplyComponent(int entityId, int componentId, IWithEntityID componentObject)
@@ -363,6 +364,10 @@ namespace Leopotam.EcsLite.Net2
             world.DelEntity(entityId);
         }
 
+        public T GetUserData<T>(IOIdentity ident){
+            return serverIO.GetUserObject<T>(ident);
+        }
+
         public void SendECSData(){
             var msgChanged = new EcsMSGComponentChanged();
             foreach (var kv in dirtyComponents){
@@ -391,8 +396,6 @@ namespace Leopotam.EcsLite.Net2
                 } else {
                     msgIO.WriteRawMessage(dataId,payload); // client=>server
                 }
-
-                msgIO.WriteMessage(msgRemoved);
             }
             dirtyComponents.Clear();
             removedComponents.Clear();    

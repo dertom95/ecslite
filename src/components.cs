@@ -160,9 +160,7 @@ namespace Leopotam.EcsLite {
             _sparseItems[entity] = idx;
             _world.OnEntityChange (entity, _id, true);
             _world.Entities[entity].ComponentsCount++;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
             _world.RaiseEntityChangeEvent (entity, _id, true);
-#endif
             return ref _denseItems[idx];
         }
 

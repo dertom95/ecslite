@@ -35,27 +35,21 @@ namespace Leopotam.EcsLite {
 
 
         bool _destroyed;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
         internal IEcsWorldEventListener _eventListener;
 
         public void SetEventListener (IEcsWorldEventListener listener) {
-#if DEBUG
             if (_eventListener != null) { throw new Exception ("Listener is already set."); }
-#endif
             _eventListener=listener;
         }
 
         public void RemoveEventListener () {
-#if DEBUG
             if (_eventListener == null) { throw new Exception ("Not set at all! "); }
-#endif
             _eventListener=null;
         }
 
         public void RaiseEntityChangeEvent (int entity,int poolId,bool added) {
             _eventListener?.OnEntityChanged(entity,poolId,added);
         }
-#endif
 #if DEBUG
         readonly List<int> _leakedEntities = new List<int> (512);
 
@@ -157,7 +151,7 @@ namespace Leopotam.EcsLite {
                 Entities[entity].Gen = 1;
             }
 #if DEBUG
-            _leakedEntities.Add (entity);
+            //_leakedEntities.Add (entity);
 #endif
             _eventListener?.OnEntityCreated (entity);
 
@@ -590,7 +584,6 @@ namespace Leopotam.EcsLite {
         }
     }
 
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
     public interface IEcsWorldEventListener {
         void OnEntityCreated (int entity);
         void OnEntityChanged (int entity, int poolId, bool added);
@@ -599,7 +592,6 @@ namespace Leopotam.EcsLite {
         void OnWorldResized (int newSize);
         void OnWorldDestroyed (EcsWorld world);
     }
-#endif
 }
 
 #if ENABLE_IL2CPP
