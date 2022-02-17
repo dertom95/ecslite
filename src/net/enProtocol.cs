@@ -8,10 +8,10 @@ namespace Leopotam.EcsLite.Net
 
     /// <summary>
     /// Interface to ensure this element has an entity field, that can be set(e.g. when this component is attached to an entity)
-    /// </summary>
-    public interface IWithEntityID
-    {
-        int Entity { get; set; }
-    }
+    // /// </summary>
+    /// // public interface IWithEntityID
+    // {
+    //     int Entity { get; set; }
+    // }
 
 }

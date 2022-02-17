@@ -48,10 +48,10 @@ namespace Leopotam.EcsLite.Net2
 
 
     public interface IEcsProtocol {
-        public const int MSG_COMPONENT_CHANGED=1000;
-        public const int MSG_COMPONENT_REMOVED=1001;
-        public const int MSG_ENTITIES_REMOVED=1002;
-        public const int MSG_LOGIN=1003;
+        public const ushort MSG_COMPONENT_CHANGED=10000;
+        public const ushort MSG_COMPONENT_REMOVED=10001;
+        public const ushort MSG_ENTITIES_REMOVED=10002;
+        public const ushort MSG_LOGIN=10003;
     }
 
     public class EcsIO : IEcsWorldEventListener
@@ -60,7 +60,7 @@ namespace Leopotam.EcsLite.Net2
         /// Receive messages that are unknown to the ecs-system
         /// </summary>
         /// <value></value>
-        public Action<int,byte[],IOIdentity> OnUnknownMessage {
+        public Action<ushort,byte[],IOIdentity> OnUnknownMessage {
             get=>msgIO.OnUnknownMessage;
             set=>msgIO.OnUnknownMessage=value;
         }
@@ -356,6 +356,11 @@ namespace Leopotam.EcsLite.Net2
             msgIO.WriteMessage<T>(msg,ident);
         }
 
+        public void BroadcastMessage<T>(T msg,IOIdentity? ignoreUser=null){
+            var(msgId,payload) = msgIO.CreateRawMessage<T>(msg);
+            BroadcastRaw(msgId,payload,ignoreUser);
+        }
+
         public void BroadcastRaw(ushort dataId,byte[] payload,IOIdentity? ignoreUser=null){
             if (ServerMode){
                 serverIO.Broadcast(dataId,payload,ignoreUser);
@@ -424,6 +429,38 @@ namespace Leopotam.EcsLite.Net2
             msgIO.Dispose();
             IsDisposed=true;
         }
+
+        /// <summary>
+        /// Sends all (outgoing acceptable) components of this entity to the IOIdentity
+        /// </summary>
+        /// <param name="ident"></param>
+        /// <param name="entity"></param>
+        public void SendEntityTo(IOIdentity ident,int entity){
+            object[] components = null;
+            int amount = world.GetComponents(entity, ref components);
+            
+            var msgChanged = new EcsMSGComponentChanged();
+            for (int i=0;i<amount;i++)
+            {
+                var comp = components[i];
+                msgChanged.entityId = entity;
+                var pool = world.GetPoolByType(comp.GetType());
+                if (pool == null){
+                    continue;
+                }
+
+                msgChanged.componentId = pool.GetId();
+                if (!IsAcceptedOutgoing(msgChanged.componentId)){
+                    continue;
+                }
+
+                msgChanged.componentPayload = MessagePackSerializer.Serialize(comp);
+
+                var (dataId, payload) = msgIO.CreateRawMessage(msgChanged);
+                
+                msgIO.WriteRawMessage(dataId, payload, ident); // client=>server
+            }            
+        }        
 
         public void OnEntityCreated(int entity)
         {
