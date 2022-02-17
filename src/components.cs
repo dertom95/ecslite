@@ -15,6 +15,7 @@ using Unity.IL2CPP.CompilerServices;
 namespace Leopotam.EcsLite {
     public interface IWithEntityID {
         int EntityID {get;set;}
+        EcsWorld World {get;set;}
     }
     public interface IEcsPool {
         void Resize (int capacity);
@@ -120,6 +121,7 @@ namespace Leopotam.EcsLite {
             if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data."); }
             if (_sparseItems[entity] <= 0) { throw new Exception ("Component not attached to entity."); }
 #endif
+            dataRaw.World=_world;
             dataRaw.EntityID=entity;
             _denseItems[_sparseItems[entity]] = (T) dataRaw;
         }
@@ -129,6 +131,7 @@ namespace Leopotam.EcsLite {
             if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data."); }
 #endif
             dataRaw.EntityID=entity;
+            dataRaw.World=_world;
             ref var data = ref Add (entity);
             data = (T) dataRaw;
         }
