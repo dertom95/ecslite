@@ -130,8 +130,7 @@ namespace Leopotam.EcsLite {
 #if DEBUG
             if (dataRaw == null || dataRaw.GetType () != _type) { throw new Exception ("Invalid component data."); }
 #endif
-            dataRaw.EntityID=entity;
-            dataRaw.World=_world;
+
             ref var data = ref Add (entity);
             data = (T) dataRaw;
         }
@@ -164,7 +163,10 @@ namespace Leopotam.EcsLite {
             _world.OnEntityChange (entity, _id, true);
             _world.Entities[entity].ComponentsCount++;
             _world.RaiseEntityChangeEvent (entity, _id, true);
-            return ref _denseItems[idx];
+            ref var comp = ref _denseItems[idx];
+            comp.EntityID=entity;
+            comp.World=_world;
+            return ref comp;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
