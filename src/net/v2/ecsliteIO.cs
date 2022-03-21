@@ -118,6 +118,8 @@ namespace Leopotam.EcsLite.Net2
 
         public bool ServerMode { get; private set; }
 
+        public Action<Action> IncomingEnvelope { get; set; }
+
         public struct CheckIncomingData
         {
             public bool addedOrChanged; // if false => removed
@@ -249,28 +251,39 @@ namespace Leopotam.EcsLite.Net2
             // TODO: send dummy message to be user the loop could execute!??
         }
 
+
+
+        private void ExecuteMessage(int msgId, object msgObject, IOIdentity identity)
+        {
+            switch (msgId) {
+                case IEcsProtocol.MSG_COMPONENT_CHANGED:
+                    ProcessIncomingChangedComponent((EcsMSGComponentChanged)msgObject, identity);
+                    break;
+                case IEcsProtocol.MSG_COMPONENT_REMOVED:
+                    ProcessIncomingRemovedComponent((EcsMsgComponentRemoved)msgObject, identity);
+                    break;
+                case IEcsProtocol.MSG_ENTITIES_REMOVED:
+                    throw new Exception("MSG_ENTITIES_REMOVED not implemented,yet. (not sure it is needed");
+                default:
+                    // everything else is considered to be a command
+                    if (OnIncomingCommandMessage != null) {
+                        OnIncomingCommandMessage(msgId, msgObject, identity);
+                    }
+                    Console.WriteLine($"[{identity}] Incoming: command-msg: id:{msgId}");
+                    break;
+            }
+        }
+
         private void ThreadLogic()
         {
             while (serverRunning) {
                 try {
                     var (msgId, msgObject, identity) = msgIO.ReadMessage();
 
-                    switch (msgId) {
-                        case IEcsProtocol.MSG_COMPONENT_CHANGED:
-                            ProcessIncomingChangedComponent((EcsMSGComponentChanged)msgObject, identity);
-                            break;
-                        case IEcsProtocol.MSG_COMPONENT_REMOVED:
-                            ProcessIncomingRemovedComponent((EcsMsgComponentRemoved)msgObject, identity);
-                            break;
-                        case IEcsProtocol.MSG_ENTITIES_REMOVED:
-                            throw new Exception("MSG_ENTITIES_REMOVED not implemented,yet. (not sure it is needed");
-                        default:
-                            // everything else is considered to be a command
-                            if (OnIncomingCommandMessage != null) {
-                                OnIncomingCommandMessage(msgId, msgObject, identity);
-                            }
-                            Console.WriteLine($"[{identity}] Incoming: command-msg: id:{msgId}");
-                            break;
+                    if (IncomingEnvelope != null){
+                        IncomingEnvelope(()=>ExecuteMessage(msgId,msgObject,identity));
+                    } else {
+                        ExecuteMessage(msgId,msgObject,identity);
                     }
                 }
                 catch (Exception e) {
