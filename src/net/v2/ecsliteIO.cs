@@ -34,7 +34,7 @@ namespace Leopotam.EcsLite.Net2
     public class EcsMsgEntitiesRemoved
     {
         [Key(0)]
-        public List<int> newEntityIds;
+        public List<int> removedEntityIds;
     }
 
     [MessagePackObject]
@@ -104,6 +104,13 @@ namespace Leopotam.EcsLite.Net2
         /// </summary>
         public HashSet<KeyValuePair<int, int>> removedComponents = new HashSet<KeyValuePair<int, int>>();
 
+        /// <summary>
+        /// list of removed entities
+        /// </summary>
+        /// <typeparam name="int"></typeparam>
+        /// <returns></returns>
+        public HashSet<int> removedEntities = new HashSet<int>();
+
 
 
 
@@ -129,6 +136,7 @@ namespace Leopotam.EcsLite.Net2
             public IOIdentity identity;
         }
         public Func<CheckIncomingData, bool> CheckIncomingComponent { get; set; }
+        public Func<int, bool> CheckIncomingEntityRemoveRequest { get; set; }
         public Action<int, object, IOIdentity> OnIncomingCommandMessage { get; set; }
         /// <summary>
         /// Only for servermode
@@ -230,6 +238,27 @@ namespace Leopotam.EcsLite.Net2
             RemoveComponent(msg.entityId, msg.componentId);
         }
 
+        private void ProcessIncomingRemovedEntities(EcsMsgEntitiesRemoved msg, IOIdentity identity){
+            if (ServerMode){
+                // server ignores incoming removed entities (for now). Usually the server triggered that in the first place. That would only make sense on client-based logic (what was the name?)
+                return;
+            }
+
+            if (CheckIncomingEntityRemoveRequest != null){
+                // give the use the final say if this entity should be really removed
+                // TODO: make this sense? the consequence would be inconsistent data => mayham
+                foreach (var entityToBeRemoved in msg.removedEntityIds){
+                    if (CheckIncomingEntityRemoveRequest(entityToBeRemoved)){
+                        world.DelEntity(entityToBeRemoved);
+                    }
+                }
+            } else {
+                foreach (var entityToBeRemoved in msg.removedEntityIds){
+                    world.DelEntity(entityToBeRemoved);
+                }
+            }
+        }
+
         public void Start()
         {
             if (serverRunning) {
@@ -263,7 +292,8 @@ namespace Leopotam.EcsLite.Net2
                     ProcessIncomingRemovedComponent((EcsMsgComponentRemoved)msgObject, identity);
                     break;
                 case IEcsProtocol.MSG_ENTITIES_REMOVED:
-                    throw new Exception("MSG_ENTITIES_REMOVED not implemented,yet. (not sure it is needed");
+                    ProcessIncomingRemovedEntities((EcsMsgEntitiesRemoved)msgObject,identity);
+                    break;
                 default:
                     // everything else is considered to be a command
                     if (OnIncomingCommandMessage != null) {
@@ -414,6 +444,7 @@ namespace Leopotam.EcsLite.Net2
         }
 
         private List<KeyValuePair<int, int>> tempList = new List<KeyValuePair<int, int>>();
+        private List<int> tempEntityList = new List<int>();
         public void SendECSData()
         {
             var msgChanged = new EcsMSGComponentChanged();
@@ -459,6 +490,21 @@ namespace Leopotam.EcsLite.Net2
                     else {
                         msgIO.WriteRawMessage(dataId, payload); // client=>server
                     }
+                }
+            }
+
+            if (removedEntities.Count > 0){
+                var msgEntitiesRemoved = new EcsMsgEntitiesRemoved();
+                lock(removedEntities){
+                    msgEntitiesRemoved.removedEntityIds=new List<int>(removedEntities);
+                    removedEntities.Clear();
+                }
+                var (dataId, payload) = msgIO.CreateRawMessage(msgEntitiesRemoved);                
+                if (ServerMode){
+                    serverIO.Broadcast(dataId,payload);
+                }
+                else {
+                    msgIO.WriteRawMessage(dataId,payload);
                 }
             }
         }
@@ -550,6 +596,7 @@ namespace Leopotam.EcsLite.Net2
         public void OnEntityDestroyed(int entity)
         {
             //TODO: Do I need this or is this covered by all components gone=>auto remove?
+            removedEntities.Add(entity);
         }
 
         public void OnFilterCreated(EcsFilter filter)

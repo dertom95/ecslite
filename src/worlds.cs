@@ -33,6 +33,13 @@ namespace Leopotam.EcsLite {
         Mask[] _masks;
         int _masksCount;
 
+        public Queue<Action> eventListenerCalls = new Queue<Action>();
+
+        public void ExecutePoolEventListerCalls(){
+            while(eventListenerCalls.TryDequeue(out Action action)){
+                action();
+            }
+        }
 
         bool _destroyed;
         internal IEcsWorldEventListener _eventListener;

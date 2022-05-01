@@ -132,6 +132,8 @@ namespace Leopotam.EcsLite {
 #endif
 
             ref var data = ref Add (entity);
+            dataRaw.EntityID=entity;
+            dataRaw.World=_world;
             data = (T) dataRaw;
         }
 
