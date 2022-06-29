@@ -152,8 +152,12 @@ namespace Leopotam.EcsLite {
                 _autoReset?.Invoke (ref _denseItems[idx]);
             }
             _sparseItems[entity] = idx;
+            ref var entityData = ref _world.Entities[entity];
+            entityData.ComponentsCount++;
+            entityData.componentMask |= ((UInt64)1 << _id);
+            
             _world.OnEntityChange (entity, _id, true);
-            _world.Entities[entity].ComponentsCount++;
+
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
             _world.RaiseEntityChangeEvent (entity);
 #endif
@@ -177,12 +181,15 @@ namespace Leopotam.EcsLite {
             return _sparseItems[entity] > 0;
         }
 
-        public void Del (int entity) {
+        public void Del (int entity) { 
 #if DEBUG
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
             ref var sparseData = ref _sparseItems[entity];
             if (sparseData > 0) {
+                ref var entityData = ref _world.Entities[entity];
+                entityData.componentMask &= ~((UInt64)1 << _id); // remove component from entities componentMask
+                entityData.ComponentsCount--;
                 _world.OnEntityChange (entity, _id, false);
                 if (_recycledItemsCount == _recycledItems.Length) {
                     Array.Resize (ref _recycledItems, _recycledItemsCount << 1);
@@ -194,8 +201,7 @@ namespace Leopotam.EcsLite {
                     _denseItems[sparseData] = default;
                 }
                 sparseData = 0;
-                ref var entityData = ref _world.Entities[entity];
-                entityData.ComponentsCount--;
+
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
                 _world.RaiseEntityChangeEvent (entity);
 #endif

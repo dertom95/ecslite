@@ -375,7 +375,7 @@ namespace Leopotam.EcsLite {
                 }
                 if (excludeList != null) {
                     foreach (var filter in excludeList) {
-                        if (IsMaskCompatibleWithout (filter.GetMask (), entity, componentType)) {
+                        if (!IsMaskCompatible (filter.GetMask(), entity)) {
 #if DEBUG
                             if (filter.SparseEntities[entity] == 0) { throw new Exception ("Entity not in filter."); }
 #endif
@@ -410,17 +410,26 @@ namespace Leopotam.EcsLite {
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         bool IsMaskCompatible (Mask filterMask, int entity) {
-            for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
-                if (!_pools[filterMask.Include[i]].Has (entity)) {
-                    return false;
-                }
-            }
-            for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
-                if (_pools[filterMask.Exclude[i]].Has (entity)) {
-                    return false;
-                }
-            }
-            return true;
+            var entityData = Entities[entity];
+            bool includeApplies = (entityData.componentMask & filterMask.includeFilter) == filterMask.includeFilter;
+            bool excludeApplies = (entityData.componentMask & filterMask.excludeFilter) == 0;
+            bool entityInFilter = includeApplies && excludeApplies;
+            return entityInFilter;
+
+            //for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
+            //    if (!_pools[filterMask.Include[i]].Has (entity)) {
+            //        return false;
+            //    }
+            //}
+            //for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
+            //    if (_pools[filterMask.Exclude[i]].Has (entity)) {
+            //        return false;
+            //    }
+            //}
+            //if (entityInFilter == false) {
+            //    int a = 0;
+            //}
+            //return true;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -465,6 +474,8 @@ namespace Leopotam.EcsLite {
             internal int IncludeCount;
             internal int ExcludeCount;
             internal int Hash;
+            internal UInt64 includeFilter;
+            internal UInt64 excludeFilter;
 #if DEBUG
             bool _built;
 #endif
@@ -496,6 +507,7 @@ namespace Leopotam.EcsLite {
 #endif
                 if (IncludeCount == Include.Length) { Array.Resize (ref Include, IncludeCount << 1); }
                 Include[IncludeCount++] = poolId;
+                includeFilter |= ((UInt64)1 << poolId);
                 return this;
             }
 
@@ -512,6 +524,7 @@ namespace Leopotam.EcsLite {
 #endif
                 if (ExcludeCount == Exclude.Length) { Array.Resize (ref Exclude, ExcludeCount << 1); }
                 Exclude[ExcludeCount++] = poolId;
+                excludeFilter |= ((UInt64)1 << poolId);
                 return this;
             }
 
@@ -549,6 +562,7 @@ namespace Leopotam.EcsLite {
         internal struct EntityData {
             public short Gen;
             public short ComponentsCount;
+            public UInt64 componentMask;
         }
     }
 
