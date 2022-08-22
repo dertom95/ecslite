@@ -18,25 +18,25 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
     public class EcsWorld {
-        internal EntityData[] Entities;
-        int _entitiesCount;
-        int[] _recycledEntities;
-        int _recycledEntitiesCount;
-        IEcsPool[] _pools;
-        int _poolsCount;
-        readonly int _poolDenseSize;
-        readonly int _poolRecycledSize;
-        readonly Dictionary<Type, IEcsPool> _poolHashes;
-        readonly Dictionary<int, EcsFilter> _hashedFilters;
-        readonly List<EcsFilter> _allFilters;
-        List<EcsFilter>[] _filtersByIncludedComponents;
-        List<EcsFilter>[] _filtersByExcludedComponents;
-        Mask[] _masks;
-        int _masksCount;
+        public EntityData[] Entities;
+        public int _entitiesCount;
+        public int[] _recycledEntities;
+        public int _recycledEntitiesCount;
+        protected IEcsPool[] _pools;
+        protected int _poolsCount;
+        protected readonly int _poolDenseSize;
+        protected readonly int _poolRecycledSize;
+        protected readonly Dictionary<Type, IEcsPool> _poolHashes;
+        protected readonly Dictionary<int, EcsFilter> _hashedFilters;
+        protected readonly List<EcsFilter> _allFilters;
+        protected List<EcsFilter>[] _filtersByIncludedComponents;
+        protected List<EcsFilter>[] _filtersByExcludedComponents;
+        protected Mask[] _masks;
+        protected int _masksCount;
 
-        bool _destroyed;
+        protected bool _destroyed;
 #if DEBUG || LEOECSLITE_WORLD_EVENTS
-        List<IEcsWorldEventListener> _eventListeners;
+        protected List<IEcsWorldEventListener> _eventListeners;
 
         public void AddEventListener (IEcsWorldEventListener listener) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
@@ -303,6 +303,12 @@ namespace Leopotam.EcsLite {
                 }
             }
             return itemsCount;
+        }
+
+        public object[] GetComponents(int entity) {
+            object[] comps = null;
+            GetComponents(entity, ref comps);
+            return comps;
         }
 
         public int GetComponentTypes (int entity, ref Type[] list) {

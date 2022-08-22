@@ -12,8 +12,8 @@ using Unity.IL2CPP.CompilerServices;
 
 namespace Leopotam.EcsLite {
     public struct EcsPackedEntity {
-        internal int Id;
-        internal int Gen;
+        public int Id;
+        public int Gen;
     }
 
     public struct EcsPackedEntityWithWorld {

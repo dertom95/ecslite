@@ -37,11 +37,11 @@ namespace Leopotam.EcsLite {
         readonly int _id;
         readonly AutoResetHandler _autoReset;
         // 1-based index.
-        T[] _denseItems;
-        int[] _sparseItems;
-        int _denseItemsCount;
-        int[] _recycledItems;
-        int _recycledItemsCount;
+        public T[] _denseItems;
+        public int[] _sparseItems;
+        public int _denseItemsCount;
+        public int[] _recycledItems;
+        public int _recycledItemsCount;
 #if ENABLE_IL2CPP && !UNITY_EDITOR
         T _autoresetFakeInstance;
 #endif
