@@ -17,7 +17,7 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
-    public class EcsWorld {
+    public partial class EcsWorld {
         public EntityData[] Entities;
         public int _entitiesCount;
         public int[] _recycledEntities;
@@ -326,7 +326,7 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal bool IsEntityAliveInternal (int entity) {
+        public bool IsEntityAliveInternal (int entity) {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
         }
 
