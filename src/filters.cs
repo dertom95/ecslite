@@ -3,6 +3,7 @@
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
+#define LEOECSLITE_FILTER_EVENTS // for some reason unity did not add apply the define (for sure a local problem,remove if not needed anymore)
 
 using System;
 using System.Runtime.CompilerServices;
@@ -122,6 +123,9 @@ namespace Leopotam.EcsLite {
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         internal void RemoveEntity (int entity) {
             if (AddDelayedOp (false, entity)) { return; }
+#if LEOECSLITE_FILTER_EVENTS
+            ProcessEventListeners(false, entity);
+#endif
             var idx = SparseEntities[entity] - 1;
             SparseEntities[entity] = 0;
             _entitiesCount--;
@@ -129,9 +133,6 @@ namespace Leopotam.EcsLite {
                 _denseEntities[idx] = _denseEntities[_entitiesCount];
                 SparseEntities[_denseEntities[idx]] = idx + 1;
             }
-#if LEOECSLITE_FILTER_EVENTS
-            ProcessEventListeners (false, entity);
-#endif
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
