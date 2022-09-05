@@ -22,8 +22,8 @@ namespace Leopotam.EcsLite {
         public int _entitiesCount;
         public int[] _recycledEntities;
         public int _recycledEntitiesCount;
-        protected IEcsPool[] _pools;
-        protected int _poolsCount;
+        public IEcsPool[] _pools;
+        public int _poolsCount;
         protected readonly int _poolDenseSize;
         protected readonly int _poolRecycledSize;
         protected readonly Dictionary<Type, IEcsPool> _poolHashes;
