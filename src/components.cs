@@ -217,6 +217,26 @@ namespace Leopotam.EcsLite {
             }
         }
 
+        /// <summary>
+        /// Iterates over sparse-array to check all entities that have a component of this type attached 
+        /// Needs a big enough array (int[entityAmount in world] for the worst case)
+        /// </summary>
+        /// <returns>Array with entity ids or null if no entity has this component type attached</returns>
+        public int __CollectEntities(int[] result) {
+            if (_denseItemsCount == 0) {
+                return 0;
+            }
+            int idx = 0;
+            int current = 0;
+            for (int i = 0, count = _sparseItems.Length; i < count && idx < _denseItemsCount; i++) {
+                if ( (current=_sparseItems[i]) != 0) {
+                    result[idx] = current-1; // the sparse-elements are stored as entityId+1 (so that sparse==0 can be the not set-value!?)
+                    idx++;
+                }
+            }
+            return idx;
+        }
+
         delegate void AutoResetHandler (ref T component);
     }
 }

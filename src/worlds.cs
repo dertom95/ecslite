@@ -192,7 +192,9 @@ namespace Leopotam.EcsLite {
                     }
                 }
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-                if (entityData.ComponentsCount != 0) { throw new Exception ($"Invalid components count on entity {entity} => {entityData.ComponentsCount}."); }
+                if (entityData.ComponentsCount != 0) { 
+                    throw new Exception ($"Invalid components count on entity {entity} => {entityData.ComponentsCount}."); 
+                }
 #endif
                 return;
             }
