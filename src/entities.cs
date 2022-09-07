@@ -3,12 +3,11 @@
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
-#if !ECSLITE_CUSTOM_ENTITY // using custom version
 using System.Runtime.CompilerServices;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
-#endif
+#endif 
 
 namespace Leopotam.EcsLite {
     public struct EcsPackedEntity {
@@ -115,4 +114,3 @@ namespace Leopotam.EcsLite {
         }
     }
 }
-#endif
