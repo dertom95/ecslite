@@ -91,8 +91,13 @@ namespace Leopotam.EcsLite {
         public static EcsPackedEntityWithWorld PackEntityWithWorld (this EcsWorld world, int entity) {
             EcsPackedEntityWithWorld packedEntity;
             packedEntity.World = world;
+#if ECS_INT_PACKED
+            packedEntity.Id = EcsWorld.GetPackedRawEntityId(entity);
+            packedEntity.Gen = EcsWorld.GetPackedGen(entity);
+#else
             packedEntity.Id = entity;
             packedEntity.Gen = world.GetEntityGen (entity);
+#endif
             return packedEntity;
         }
 
@@ -103,8 +108,13 @@ namespace Leopotam.EcsLite {
                 entity = -1;
                 return false;
             }
+#if ECS_INT_PACKED
+            world = packedEntity.World;
+            entity = world.PackEntity(packedEntity.Id);
+#else
             world = packedEntity.World;
             entity = packedEntity.Id;
+#endif
             return true;
         }
 

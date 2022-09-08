@@ -113,10 +113,15 @@ namespace Leopotam.EcsLite {
             if (_entitiesCount == _denseEntities.Length) {
                 Array.Resize (ref _denseEntities, _entitiesCount << 1);
             }
+#if ECS_INT_PACKED
+            int packedEntity = _world.PackEntity(entity);
+            _denseEntities[_entitiesCount++] = packedEntity;
+#else
             _denseEntities[_entitiesCount++] = entity;
+#endif
             SparseEntities[entity] = _entitiesCount;
 #if LEOECSLITE_FILTER_EVENTS
-            ProcessEventListeners (true, entity);
+            ProcessEventListeners (true, packedEntity);
 #endif
         }
 
@@ -124,14 +129,20 @@ namespace Leopotam.EcsLite {
         internal void RemoveEntity (int entity) {
             if (AddDelayedOp (false, entity)) { return; }
 #if LEOECSLITE_FILTER_EVENTS
+ #if ECS_INT_PACKED
+            ProcessEventListeners(false, _world.PackEntity(entity));
+ #else
             ProcessEventListeners(false, entity);
+ #endif
 #endif
             var idx = SparseEntities[entity] - 1;
             SparseEntities[entity] = 0;
             _entitiesCount--;
             if (idx < _entitiesCount) {
                 _denseEntities[idx] = _denseEntities[_entitiesCount];
-                SparseEntities[_denseEntities[idx]] = idx + 1;
+                int denseEntityPacked = _denseEntities[idx];
+                int sparseIdx = EcsWorld.GetPackedRawEntityId(denseEntityPacked);
+                SparseEntities[sparseIdx] = idx + 1;
             }
         }
 

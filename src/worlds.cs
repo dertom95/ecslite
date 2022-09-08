@@ -12,12 +12,53 @@ using System.Runtime.CompilerServices;
 using Unity.IL2CPP.CompilerServices;
 #endif
 
+
 namespace Leopotam.EcsLite {
 #if ENABLE_IL2CPP
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
     public partial class EcsWorld {
+#if ECS_INT_PACKED
+
+        public const int MASK_ENTITY = 0b00000000001111111111111111111111;
+        public const int MASK_GEN = 0b00000011110000000000000000000000;
+        public const int MASK_WORLD = 0b01111100000000000000000000000000;
+        public const int SHIFT_GEN = 22;
+        public const int SHIFT_WORLD = 26;
+
+        public const int MAX_WORLDS = (1 << 5) - 1;
+        public const int MAX_GEN = (1 << 4) - 1;
+        public const int MAX_ENTITIES = (1 << 22) - 1;
+
+        private static EcsWorld[] worlds = new EcsWorld[MAX_WORLDS];
+
+        /// <summary>
+        /// Register this world with its specific idx
+        /// </summary>
+        /// <param name="idx"></param>
+        /// <param name="world"></param>
+        protected static void RegisterWorlds(int idx, EcsWorld world) {
+            if (idx >= MAX_WORLDS) {
+                throw new Exception("You ");
+            }
+            worlds[idx] = world;
+        }
+
+        public static void DestroyWorlds(bool alsoDestruct = false) {
+            for (int i=0,count=worlds.Length;i<count;i++) {
+                if (worlds[i] == null) {
+                    continue;
+                }
+                worlds[i].Destroy();
+            }
+        }
+
+        public int worldBitmask;
+        public int worldIdx;
+
+
+#endif
         public EntityData[] Entities;
         public int _entitiesCount;
         public int[] _recycledEntities;
@@ -75,7 +116,14 @@ namespace Leopotam.EcsLite {
         }
 #endif
 
+#if ECS_INT_PACKED
+        public EcsWorld (int _worldIdx,in Config cfg = default) {
+            RegisterWorlds(_worldIdx, this);
+            worldIdx = _worldIdx;
+            worldBitmask = _worldIdx << SHIFT_WORLD;
+#else
         public EcsWorld (in Config cfg = default) {
+#endif
             // entities.
             var capacity = cfg.Entities > 0 ? cfg.Entities : Config.EntitiesDefault;
             Entities = new EntityData[capacity];
@@ -127,6 +175,7 @@ namespace Leopotam.EcsLite {
                 _eventListeners[ii].OnWorldDestroyed (this);
             }
 #endif
+            worlds[worldIdx] = null;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -134,12 +183,14 @@ namespace Leopotam.EcsLite {
             return !_destroyed;
         }
 
+
         public int NewEntity () {
             int entity;
+            int gen = 0;
             if (_recycledEntitiesCount > 0) {
                 entity = _recycledEntities[--_recycledEntitiesCount];
                 ref var entityData = ref Entities[entity];
-                entityData.Gen = (short) -entityData.Gen;
+                gen = entityData.Gen = (short) -entityData.Gen;
             } else {
                 // new entity.
                 if (_entitiesCount == Entities.Length) {
@@ -159,7 +210,7 @@ namespace Leopotam.EcsLite {
 #endif
                 }
                 entity = _entitiesCount++;
-                Entities[entity].Gen = 1;
+                gen = Entities[entity].Gen = 1;
             }
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             _leakedEntities.Add (entity);
@@ -169,10 +220,86 @@ namespace Leopotam.EcsLite {
                 _eventListeners[ii].OnEntityCreated (entity);
             }
 #endif
+#if ECS_INT_PACKED
+            entity = PackEntity(entity, gen);
+#endif
             return entity;
         }
 
+#if ECS_INT_PACKED
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int PackEntity(int plainEntity) {
+            int gen = GetEntityGen(plainEntity) << SHIFT_GEN;
+            int packedEntity = worldBitmask | gen | plainEntity;
+            return packedEntity;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int PackEntity(int plainEntity,int gen) {
+            gen = gen << SHIFT_GEN;
+            int packedEntity = worldBitmask | gen | plainEntity;
+            return packedEntity;
+        }
+
+        /// <summary>
+        /// Unpack and return values as ValueTuple
+        /// </summary>
+        /// <param name="packedEntity"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (int, int, int) UnpackEntity(int packedEntity) {
+            // due to better inlining, dont using the specialized methods here. 
+            int rawEntity = packedEntity & MASK_ENTITY;
+            int worldID = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+            int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+            return (rawEntity, worldID, gen);
+        }
+
+        /// <summary>
+        /// Unpack and return values as ValueTuple
+        /// </summary>
+        /// <param name="packedEntity"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (int, T, int) UnpackEntityWithWorld<T>(int packedEntity) where T:EcsWorld {
+            // due to better inlining, dont using the specialized methods here. 
+            int rawEntity = packedEntity & MASK_ENTITY;
+            int worldID = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+            EcsWorld world = worlds[worldID];
+            int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+            return (rawEntity, Unsafe.As<T>(world), gen);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetPackedGen(int packedEntity) {
+            int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+            return gen;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetPackedWorldID(int packedEntity) {
+            int worldId = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+            return worldId;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T GetPackedWorld<T>(int packedEntity) where T:EcsWorld {
+            int worldId = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+            T world = Unsafe.As<T>(worlds[worldId]);
+            return world;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetPackedRawEntityId(int packedEntity) {
+            var rawEntity = packedEntity & MASK_ENTITY;
+            return rawEntity;
+        }
+#endif
+
         public void DelEntity (int entity) {
+#if ECS_INT_PACKED
+            entity = EcsWorld.GetPackedRawEntityId(entity);
+#endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (entity < 0 || entity >= _entitiesCount) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
@@ -212,11 +339,17 @@ namespace Leopotam.EcsLite {
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public int GetComponentsCount (int entity) {
+#if ECS_INT_PACKED
+            entity = EcsWorld.GetPackedRawEntityId(entity);
+#endif
             return Entities[entity].ComponentsCount;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public short GetEntityGen (int entity) {
+#if ECS_INT_PACKED
+            entity = EcsWorld.GetPackedRawEntityId(entity);
+#endif
             return Entities[entity].Gen;
         }
 
@@ -294,6 +427,9 @@ namespace Leopotam.EcsLite {
         }
 
         public int GetComponents (int entity, ref object[] list) {
+#if ECS_INT_PACKED
+            entity = EcsWorld.GetPackedRawEntityId(entity);
+#endif
             var itemsCount = Entities[entity].ComponentsCount;
             if (itemsCount == 0) { return 0; }
             if (list == null || list.Length < itemsCount) {
@@ -314,6 +450,9 @@ namespace Leopotam.EcsLite {
         }
 
         public int GetComponentTypes (int entity, ref Type[] list) {
+#if ECS_INT_PACKED
+            entity = EcsWorld.GetPackedRawEntityId(entity);
+#endif
             var itemsCount = Entities[entity].ComponentsCount;
             if (itemsCount == 0) { return 0; }
             if (list == null || list.Length < itemsCount) {
@@ -327,6 +466,10 @@ namespace Leopotam.EcsLite {
             return itemsCount;
         }
 
+
+        /// <summary>
+        /// Needs to be called with unpacked entity 
+        /// </summary>
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public bool IsEntityAliveInternal (int entity) {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
@@ -371,6 +514,9 @@ namespace Leopotam.EcsLite {
             return (filter, true);
         }
 
+        /// <summary>
+        /// Needs to be called with unpacked entity 
+        /// </summary>
         public void OnEntityChangeInternal (int entity, int componentType, bool added) {
             var includeList = _filtersByIncludedComponents[componentType];
             var excludeList = _filtersByExcludedComponents[componentType];

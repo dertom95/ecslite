@@ -148,6 +148,11 @@ namespace Leopotam.EcsLite {
         }
 
         public ref T Add (int entity) {
+#if ECS_INT_PACKED
+            int packedEntity = entity;
+            // work with the raw-entity
+            entity = EcsWorld.GetPackedRawEntityId(packedEntity);
+#endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
             if (_sparseItems[entity] > 0) { throw new Exception ($"Component \"{typeof (T).Name}\" already attached to entity."); }
@@ -164,16 +169,25 @@ namespace Leopotam.EcsLite {
                 _autoReset?.Invoke (ref _denseItems[idx]);
             }
             _sparseItems[entity] = idx;
-            _world.OnEntityChangeInternal (entity, _id, true);
             _world.Entities[entity].ComponentsCount++;
+            _world.OnEntityChangeInternal(entity, _id, true);
 #if LEOECSLITE_WORLD_EVENTS
-            _world.RaiseEntityChangeEvent (entity);
+#if ECS_INT_PACKED
+            _world.RaiseEntityChangeEvent(packedEntity);
+# else
+            _world.RaiseEntityChangeEvent(entity);
+# endif
 #endif
             return ref _denseItems[idx];
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public ref T Get (int entity) {
+#if ECS_INT_PACKED
+            int packedEntity = entity;
+            // work with the raw-entity
+            entity = EcsWorld.GetPackedRawEntityId(packedEntity);
+#endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
             if (_sparseItems[entity] == 0) { throw new Exception ($"Cant get \"{typeof (T).Name}\" component - not attached."); }
@@ -183,6 +197,11 @@ namespace Leopotam.EcsLite {
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public bool Has (int entity) {
+#if ECS_INT_PACKED
+            int packedEntity = entity;
+            // work with the raw-entity
+            entity = EcsWorld.GetPackedRawEntityId(packedEntity);
+#endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
@@ -190,6 +209,11 @@ namespace Leopotam.EcsLite {
         }
 
         public void Del (int entity) {
+#if ECS_INT_PACKED
+            int packedEntity = entity;
+            // work with the raw-entity
+            entity = EcsWorld.GetPackedRawEntityId(packedEntity);
+#endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
@@ -209,10 +233,18 @@ namespace Leopotam.EcsLite {
                 ref var entityData = ref _world.Entities[entity];
                 entityData.ComponentsCount--;
 #if LEOECSLITE_WORLD_EVENTS
+# if ECS_INT_PACKED
+                _world.RaiseEntityChangeEvent (packedEntity);
+# else
                 _world.RaiseEntityChangeEvent (entity);
+# endif
 #endif
                 if (entityData.ComponentsCount == 0) {
-                    _world.DelEntity (entity);
+#if ECS_INT_PACKED
+                    _world.DelEntity(packedEntity);
+#else
+                    _world.DelEntity(entity);
+#endif
                 }
             }
         }
