@@ -475,11 +475,11 @@ namespace Leopotam.EcsLite {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
         }
 
-        (EcsFilter, bool) GetFilterInternal (Mask mask, int capacity = 512) {
+        (EcsFilter<T>, bool) GetFilterInternal<T> (Mask mask, int capacity = 512) where T:IFilterData {
             var hash = mask.Hash;
             var exists = _hashedFilters.TryGetValue (hash, out var filter);
-            if (exists) { return (filter, false); }
-            filter = new EcsFilter (this, mask, capacity, Entities.Length);
+            if (exists) { return ((EcsFilter<T>)filter, false); }
+            filter = new EcsFilter<T> (this, mask, capacity, Entities.Length);
             _hashedFilters[hash] = filter;
             _allFilters.Add (filter);
             // add to component dictionaries for fast compatibility scan.
@@ -511,7 +511,7 @@ namespace Leopotam.EcsLite {
                 _eventListeners[ii].OnFilterCreated (filter);
             }
 #endif
-            return (filter, true);
+            return ((EcsFilter<T>)filter, true);
         }
 
         /// <summary>
@@ -676,8 +676,14 @@ namespace Leopotam.EcsLite {
                 return this;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public EcsFilter<NoFilterData> End(int capacity = 512) {
+                return End<NoFilterData>(capacity);
+            }
+
+
             [MethodImpl (MethodImplOptions.AggressiveInlining)]
-            public EcsFilter End (int capacity = 512) {
+            public EcsFilter<T> End<T> (int capacity = 512) where T:IFilterData {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                 if (_built) { throw new Exception ("Cant change built mask."); }
                 _built = true;
@@ -692,7 +698,7 @@ namespace Leopotam.EcsLite {
                 for (int i = 0, iMax = ExcludeCount; i < iMax; i++) {
                     Hash = unchecked (Hash * 314159 - Exclude[i]);
                 }
-                var (filter, isNew) = _world.GetFilterInternal (this, capacity);
+                var (filter, isNew) = _world.GetFilterInternal<T> (this, capacity);
                 if (!isNew) { Recycle (); }
                 return filter;
             }

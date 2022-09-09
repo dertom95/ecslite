@@ -13,6 +13,21 @@ using Unity.IL2CPP.CompilerServices;
 #endif
 
 namespace Leopotam.EcsLite {
+#if ECS_INT_PACKED
+    public interface IFilterData
+    {
+        int PackedEntity { get; set; } 
+        void SetData();
+    }
+
+    public struct NoFilterData : IFilterData
+    {
+        public int PackedEntity { get; set; }
+        public void SetData() {
+        }
+    }
+#endif
+
 #if LEOECSLITE_FILTER_EVENTS
     public interface IEcsFilterEventListener {
         void OnEntityAdded (int entity);
@@ -23,12 +38,20 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.NullChecks, false)]
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
-    public sealed class EcsFilter {
+    public abstract class EcsFilter {
+        internal abstract void ResizeSparseIndex(int capacity);
+        internal abstract void AddEntity(int entity);
+        internal abstract void RemoveEntity(int entity);
+        internal abstract EcsWorld.Mask GetMask();
+        internal int[] SparseEntities;
+    }
+
+    public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
         readonly EcsWorld _world;
         readonly EcsWorld.Mask _mask;
         int[] _denseEntities;
+        T[] _filterData=null;
         int _entitiesCount;
-        internal int[] SparseEntities;
         int _lockCount;
         DelayedOp[] _delayedOps;
         int _delayedOpsCount;
@@ -38,6 +61,9 @@ namespace Leopotam.EcsLite {
 #endif
 
         internal EcsFilter (EcsWorld world, EcsWorld.Mask mask, int denseCapacity, int sparseCapacity) {
+            if (typeof(T) != typeof(NoFilterData)) {
+                _filterData = new T[denseCapacity];
+            }
             _world = world;
             _mask = mask;
             _denseEntities = new int[denseCapacity];
@@ -69,9 +95,9 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        public Enumerator GetEnumerator () {
+        public Enumerator<T> GetEnumerator () {
             _lockCount++;
-            return new Enumerator (this);
+            return new Enumerator<T> (this);
         }
 
 #if LEOECSLITE_FILTER_EVENTS
@@ -98,24 +124,34 @@ namespace Leopotam.EcsLite {
 #endif
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal void ResizeSparseIndex (int capacity) {
+        override internal void ResizeSparseIndex (int capacity) {
             Array.Resize (ref SparseEntities, capacity);
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal EcsWorld.Mask GetMask () {
+        override internal EcsWorld.Mask GetMask () {
             return _mask;
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal void AddEntity (int entity) {
+        override internal void AddEntity (int entity) {
             if (AddDelayedOp (true, entity)) { return; }
             if (_entitiesCount == _denseEntities.Length) {
                 Array.Resize (ref _denseEntities, _entitiesCount << 1);
             }
 #if ECS_INT_PACKED
             int packedEntity = _world.PackEntity(entity);
-            _denseEntities[_entitiesCount++] = packedEntity;
+            int densePosition = _entitiesCount;
+            _denseEntities[densePosition] = packedEntity;
+            if (_filterData != null) {
+                if (_entitiesCount >= 1) {
+                    int a = 0;
+                }
+                UnityEngine.Debug.Log($"{entity} Count:" + _entitiesCount);
+                _filterData[densePosition].PackedEntity = packedEntity;
+                _filterData[densePosition].SetData();
+            }
+            _entitiesCount++;
 #else
             _denseEntities[_entitiesCount++] = entity;
 #endif
@@ -126,7 +162,7 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        internal void RemoveEntity (int entity) {
+        override internal void RemoveEntity (int entity) {
             if (AddDelayedOp (false, entity)) { return; }
 #if LEOECSLITE_FILTER_EVENTS
  #if ECS_INT_PACKED
@@ -135,14 +171,17 @@ namespace Leopotam.EcsLite {
             ProcessEventListeners(false, entity);
  #endif
 #endif
-            var idx = SparseEntities[entity] - 1;
+            var removeDenseIdx = SparseEntities[entity] - 1;
             SparseEntities[entity] = 0;
             _entitiesCount--;
-            if (idx < _entitiesCount) {
-                _denseEntities[idx] = _denseEntities[_entitiesCount];
-                int denseEntityPacked = _denseEntities[idx];
+            if (removeDenseIdx < _entitiesCount) {
+                _denseEntities[removeDenseIdx] = _denseEntities[_entitiesCount];
+                int denseEntityPacked = _denseEntities[removeDenseIdx];
                 int sparseIdx = EcsWorld.GetPackedRawEntityId(denseEntityPacked);
-                SparseEntities[sparseIdx] = idx + 1;
+                SparseEntities[sparseIdx] = removeDenseIdx + 1;
+                if (_filterData != null) {
+                    _filterData[removeDenseIdx] =_filterData[_entitiesCount];
+                }
             }
         }
 
@@ -191,22 +230,30 @@ namespace Leopotam.EcsLite {
         }
 #endif
 
-        public struct Enumerator : IDisposable {
-            readonly EcsFilter _filter;
+        public struct Enumerator<S> : IDisposable where S:T{
+            readonly EcsFilter<S> _filter;
+            readonly S[] _filterData;
             readonly int[] _entities;
             readonly int _count;
             int _idx;
 
-            public Enumerator (EcsFilter filter) {
+            public Enumerator (EcsFilter<S> filter) {
                 _filter = filter;
                 _entities = filter._denseEntities;
                 _count = filter._entitiesCount;
+                _filterData = filter._filterData;
                 _idx = -1;
             }
 
-            public int Current {
-                [MethodImpl (MethodImplOptions.AggressiveInlining)]
-                get => _entities[_idx];
+            public (int,T) Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get {
+                    if (_filterData != null) {
+                        return (_entities[_idx], _filterData[_idx]);
+                    } else {
+                        return (_entities[_idx], default);
+                    }
+                }
             }
 
             [MethodImpl (MethodImplOptions.AggressiveInlining)]
