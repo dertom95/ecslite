@@ -22,8 +22,8 @@ namespace Leopotam.EcsLite {
 #if ECS_INT_PACKED
 
         public const int MASK_ENTITY = 0b00000000001111111111111111111111;
-        public const int MASK_GEN = 0b00000011110000000000000000000000;
-        public const int MASK_WORLD = 0b01111100000000000000000000000000;
+        public const int MASK_GEN =    0b00000011110000000000000000000000;
+        public const int MASK_WORLD =  0b01111100000000000000000000000000;
         public const int SHIFT_GEN = 22;
         public const int SHIFT_WORLD = 26;
 

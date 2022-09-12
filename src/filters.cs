@@ -20,6 +20,11 @@ namespace Leopotam.EcsLite {
         void SetData();
     }
 
+    public interface IFilterData<A> : IFilterData { }
+    public interface IFilterData<A,B> : IFilterData { }
+    public interface IFilterData<A,B,C> : IFilterData { }
+    public interface IFilterData<A,B,C,D> : IFilterData { }
+
     public struct NoFilterData : IFilterData
     {
         public int PackedEntity { get; set; }
