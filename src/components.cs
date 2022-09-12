@@ -262,7 +262,7 @@ namespace Leopotam.EcsLite {
             int current = 0;
             for (int i = 0, count = _sparseItems.Length; i < count && idx < _denseItemsCount; i++) {
                 if ( (current=_sparseItems[i]) != 0) {
-                    result[idx] = current-1; // the sparse-elements are stored as entityId+1 (so that sparse==0 can be the not set-value!?)
+                    result[idx] = i; // the sparse-elements are stored as entityId+1 (so that sparse==0 can be the not set-value!?)
                     idx++;
                 }
             }
