@@ -76,7 +76,7 @@ namespace Leopotam.EcsLite {
         protected int _masksCount;
 
         protected bool _destroyed;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
         protected List<IEcsWorldEventListener> _eventListeners;
 
         public void AddEventListener (IEcsWorldEventListener listener) {
@@ -147,7 +147,7 @@ namespace Leopotam.EcsLite {
             // masks.
             _masks = new Mask[64];
             _masksCount = 0;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
             _eventListeners = new List<IEcsWorldEventListener> (4);
 #endif
             _destroyed = false;
@@ -170,7 +170,7 @@ namespace Leopotam.EcsLite {
             _allFilters.Clear ();
             _filtersByIncludedComponents = Array.Empty<List<EcsFilter>> ();
             _filtersByExcludedComponents = Array.Empty<List<EcsFilter>> ();
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
             for (var ii = _eventListeners.Count - 1; ii >= 0; ii--) {
                 _eventListeners[ii].OnWorldDestroyed (this);
             }
@@ -203,7 +203,7 @@ namespace Leopotam.EcsLite {
                     for (int i = 0, iMax = _allFilters.Count; i < iMax; i++) {
                         _allFilters[i].ResizeSparseIndex (newSize);
                     }
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
                     for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
                         _eventListeners[ii].OnWorldResized (newSize);
                     }
@@ -215,7 +215,7 @@ namespace Leopotam.EcsLite {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
             _leakedEntities.Add (entity);
 #endif
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if DEBUG && LEOECSLITE_WORLD_EVENTS
             for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
                 _eventListeners[ii].OnEntityCreated (entity);
             }
@@ -330,7 +330,7 @@ namespace Leopotam.EcsLite {
                 Array.Resize (ref _recycledEntities, _recycledEntitiesCount << 1);
             }
             _recycledEntities[_recycledEntitiesCount++] = entity;
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if DEBUG && LEOECSLITE_WORLD_EVENTS
             for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
                 _eventListeners[ii].OnEntityDestroyed (entity);
             }
@@ -506,7 +506,7 @@ namespace Leopotam.EcsLite {
                     filter.AddEntity (i);
                 }
             }
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
             for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
                 _eventListeners[ii].OnFilterCreated (filter);
             }
@@ -719,7 +719,7 @@ namespace Leopotam.EcsLite {
         }
     }
 
-#if DEBUG || LEOECSLITE_WORLD_EVENTS
+#if LEOECSLITE_WORLD_EVENTS
     public interface IEcsWorldEventListener {
         void OnEntityCreated (int entity);
         void OnEntityChanged (int entity);
