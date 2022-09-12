@@ -31,7 +31,7 @@ namespace Leopotam.EcsLite {
         public const int MAX_GEN = (1 << 4) - 1;
         public const int MAX_ENTITIES = (1 << 22) - 1;
 
-        private static EcsWorld[] worlds = new EcsWorld[MAX_WORLDS];
+        public static EcsWorld[] worlds = new EcsWorld[MAX_WORLDS];
 
         /// <summary>
         /// Register this world with its specific idx
