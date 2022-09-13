@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -23,7 +23,7 @@ namespace Leopotam.EcsLite {
     }
 
     public interface IEcsRunSystem : IEcsSystem {
-        void Run (EcsSystems systems);
+        void Run (EcsSystems systems,float dt=0);
     }
 
     public interface IEcsDestroySystem : IEcsSystem {
@@ -43,6 +43,7 @@ namespace Leopotam.EcsLite {
         readonly Dictionary<string, EcsWorld> _worlds;
         readonly List<IEcsSystem> _allSystems;
         readonly object _shared;
+		float _deltaTime;
         IEcsRunSystem[] _runSystems;
         int _runSystemsCount;
 
@@ -162,9 +163,9 @@ namespace Leopotam.EcsLite {
             }
         }
 
-        public void Run () {
+        public void Run (float dt=0) {
             for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
-                _runSystems[i].Run (this);
+                _runSystems[i].Run (this,dt);
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                 var worldName = CheckForLeakedEntities ();
                 if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType ().Name}.Run()."); }
