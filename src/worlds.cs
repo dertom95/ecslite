@@ -178,6 +178,15 @@ namespace Leopotam.EcsLite {
             worlds[worldIdx] = null;
         }
 
+        /// <summary>
+        /// Let the filterdata be updated to new memory addresses on next enumator-interation
+        /// </summary>
+        public void MarkFiltersDirty() {
+            for (int i = 0, iEnd = _allFilters.Count; i < iEnd; i++) {
+                _allFilters[i].updateFilters = true;
+            }
+        }
+
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public bool IsAlive () {
             return !_destroyed;

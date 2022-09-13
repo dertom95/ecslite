@@ -164,6 +164,8 @@ namespace Leopotam.EcsLite {
                 idx = _denseItemsCount;
                 if (_denseItemsCount == _denseItems.Length) {
                     Array.Resize (ref _denseItems, _denseItemsCount << 1);
+                    // the memory-positions of the components changed with the resize => for now we mark all filters that they should recatch the data, as we can't be sure what PtrRefs are set in the filterdata
+                    _world.MarkFiltersDirty();
                 }
                 _denseItemsCount++;
                 _autoReset?.Invoke (ref _denseItems[idx]);
