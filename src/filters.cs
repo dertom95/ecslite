@@ -49,6 +49,7 @@ namespace Leopotam.EcsLite {
         internal abstract void RemoveEntity(int entity);
         internal abstract EcsWorld.Mask GetMask();
         internal int[] SparseEntities;
+        internal bool updateFilters = false;
     }
 
     public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
@@ -241,6 +242,7 @@ namespace Leopotam.EcsLite {
             readonly int[] _entities;
             readonly int _count;
             int _idx;
+            
 
             public Enumerator (EcsFilter<S> filter) {
                 _filter = filter;
@@ -254,6 +256,10 @@ namespace Leopotam.EcsLite {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get {
                     if (_filterData != null) {
+                        if (_filter.updateFilters) {
+                            // data changed (e.g. DenseArray of a pool changed) => we need to rewire to the new pointer
+                            _filterData[_idx].SetData();
+                        }
                         return (_entities[_idx], _filterData[_idx]);
                     } else {
                         return (_entities[_idx], default);
