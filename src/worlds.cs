@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -475,7 +475,7 @@ namespace Leopotam.EcsLite {
             return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
         }
 
-        (EcsFilter<T>, bool) GetFilterInternal<T> (Mask mask, int capacity = 512) where T:IFilterData {
+        (EcsFilter<T>, bool) GetFilterInternal<T> (Mask mask, int capacity = 16) where T:IFilterData {
             var hash = mask.Hash;
             var exists = _hashedFilters.TryGetValue (hash, out var filter);
             if (exists) { return ((EcsFilter<T>)filter, false); }

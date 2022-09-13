@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -20,10 +20,10 @@ namespace Leopotam.EcsLite {
         void SetData();
     }
 
-    public interface IFilterData<A> : IFilterData { }
-    public interface IFilterData<A,B> : IFilterData { }
-    public interface IFilterData<A,B,C> : IFilterData { }
-    public interface IFilterData<A,B,C,D> : IFilterData { }
+    //public interface IFilterData<A> : IFilterData { }
+    //public interface IFilterData<A,B> : IFilterData { }
+    //public interface IFilterData<A,B,C> : IFilterData { }
+    //public interface IFilterData<A,B,C,D> : IFilterData { }
 
     public struct NoFilterData : IFilterData
     {
