@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -276,8 +277,8 @@ namespace Leopotam.EcsLite {
 			int worldID = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
 			EcsWorld world = worlds[worldID];
 			int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
-			//return (rawEntity, Unsafe.As<T>(world), gen);
-			return (rawEntity, (T)world, gen);
+			return (rawEntity, UnsafeUtility.As<EcsWorld,T>(ref world), gen);
+			//return (rawEntity, (T)world, gen);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -295,8 +296,8 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T GetPackedWorld<T>(int packedEntity) where T:EcsWorld {
 			int worldId = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
-			//T world = Unsafe.As<T>(worlds[worldId]);
-			T world = (T)worlds[worldId];
+			T world = UnsafeUtility.As<EcsWorld, T>(ref worlds[worldId]);
+			//T world = (T)worlds[worldId];
 			return world;
 		}
 
