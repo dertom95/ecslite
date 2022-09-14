@@ -45,7 +45,7 @@ namespace Leopotam.EcsLite {
             worlds[idx] = world;
         }
 
-        public static void DestroyWorlds(bool alsoDestruct = false) {
+        public static void DestroyWorlds() {
             for (int i=0,count=worlds.Length;i<count;i++) {
                 if (worlds[i] == null) {
                     continue;
