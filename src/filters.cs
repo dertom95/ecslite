@@ -152,9 +152,6 @@ namespace Leopotam.EcsLite {
             int densePosition = _entitiesCount;
             _denseEntities[densePosition] = packedEntity;
             if (_filterData != null) {
-                if (_entitiesCount >= 1) {
-                    int a = 0;
-                }
                 UnityEngine.Debug.Log($"{entity} Count:" + _entitiesCount);
                 _filterData[densePosition].PackedEntity = packedEntity;
                 _filterData[densePosition].SetData();
