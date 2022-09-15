@@ -20,12 +20,13 @@ namespace Leopotam.EcsLite {
         void SetData();
     }
 
-    //public interface IFilterData<A> : IFilterData { }
-    //public interface IFilterData<A,B> : IFilterData { }
-    //public interface IFilterData<A,B,C> : IFilterData { }
-    //public interface IFilterData<A,B,C,D> : IFilterData { }
+	public interface IFilterDataDefinition { }
+	public interface IFilterData<A> : IFilterDataDefinition { }
+	public interface IFilterData<A, B> : IFilterDataDefinition { }
+	public interface IFilterData<A, B, C> : IFilterDataDefinition { }
+	public interface IFilterData<A, B, C, D> : IFilterDataDefinition { }
 
-    public struct NoFilterData : IFilterData
+	public struct NoFilterData : IFilterData
     {
         public int PackedEntity { get; set; }
         public void SetData() {
