@@ -380,12 +380,13 @@ namespace Leopotam.EcsLite {
 			return Entities;
 		}
 
-		public EcsPool<T> GetPool<T> () where T : struct {
+		public EcsPool<T> GetPool<T> (int initialDenseSize=-1) where T : struct {
 			var poolType = typeof (T);
 			if (_poolHashes.TryGetValue (poolType, out var rawPool)) {
 				return (EcsPool<T>) rawPool;
 			}
-			var pool = new EcsPool<T> (this, _poolsCount, _poolDenseSize, Entities.Length, _poolRecycledSize);
+			int initalPoolDenseSize = initialDenseSize != -1 ? initialDenseSize : _poolDenseSize;
+			var pool = new EcsPool<T> (this, _poolsCount, initalPoolDenseSize, Entities.Length, _poolRecycledSize);
 			_poolHashes[poolType] = pool;
 			if (_poolsCount == _pools.Length) {
 				var newSize = _poolsCount << 1;
