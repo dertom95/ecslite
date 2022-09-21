@@ -1,4 +1,4 @@
-﻿// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 
 #if ENABLE_IL2CPP
@@ -22,11 +23,20 @@ namespace Leopotam.EcsLite {
 	public partial class EcsWorld {
 #if ECS_INT_PACKED
 
-		public const int MASK_ENTITY = 0b00000000001111111111111111111111;
-		public const int MASK_GEN =    0b00000011110000000000000000000000;
-		public const int MASK_WORLD =  0b01111100000000000000000000000000;
-		public const int SHIFT_GEN = 22;
-		public const int SHIFT_WORLD = 26;
+		protected struct TaggedFilter {
+			public Mask.BitMaskData filterBitMaskData;
+			public EcsFilter filter;
+		}
+
+		public const int ENTITYDATA_AMOUNT_COMPONENT_BITMASKS = 2;
+
+		public const int ENTITYID_MASK_ENTITY = 0b00000000001111111111111111111111;
+		public const int ENTITYID_MASK_GEN =    0b00000011110000000000000000000000;
+		public const int ENTITYID_MASK_WORLD =  0b01111100000000000000000000000000;
+		public const int ENTITYID_SHIFT_GEN = 22;
+		public const int ENTITYID_SHIFT_WORLD = 26;
+
+		public const UInt32 TAGFILTERMASK_ENTITY_TYPE = 0b00000000000000000000000000001111;
 
 		public const int MAX_WORLDS = (1 << 5) - 1;
 		public const int MAX_GEN = (1 << 4) - 1;
@@ -41,7 +51,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="world"></param>
 		protected static void RegisterWorlds(int idx, EcsWorld world) {
 			if (idx >= MAX_WORLDS) {
-				throw new Exception("You ");
+				throw new Exception($"You added more worlds than supported({MAX_WORLDS})");
 			}
 			worlds[idx] = world;
 		}
@@ -71,8 +81,12 @@ namespace Leopotam.EcsLite {
 		protected readonly Dictionary<Type, IEcsPool> _poolHashes;
 		protected readonly Dictionary<int, EcsFilter> _hashedFilters;
 		protected readonly List<EcsFilter> _allFilters;
+
 		protected List<EcsFilter>[] _filtersByIncludedComponents;
 		protected List<EcsFilter>[] _filtersByExcludedComponents;
+
+		protected int taggedFilterAmount = 0;
+		protected TaggedFilter[] _filtersByTagMask;
 		protected Mask[] _masks;
 		protected int _masksCount;
 
@@ -107,7 +121,7 @@ namespace Leopotam.EcsLite {
 			if (_leakedEntities.Count > 0) {
 				for (int i = 0, iMax = _leakedEntities.Count; i < iMax; i++) {
 					ref var entityData = ref Entities[_leakedEntities[i]];
-					if (entityData.Gen > 0 && entityData.ComponentsCount == 0) {
+					if (entityData.Gen > 0 && !entityData.HasComponents) {
 						return true;
 					}
 				}
@@ -121,7 +135,7 @@ namespace Leopotam.EcsLite {
 		public EcsWorld (int _worldIdx,in Config cfg = default) {
 			RegisterWorlds(_worldIdx, this);
 			worldIdx = _worldIdx;
-			worldBitmask = _worldIdx << SHIFT_WORLD;
+			worldBitmask = _worldIdx << ENTITYID_SHIFT_WORLD;
 #else
 		public EcsWorld (in Config cfg = default) {
 #endif
@@ -138,6 +152,7 @@ namespace Leopotam.EcsLite {
 			_poolHashes = new Dictionary<Type, IEcsPool> (capacity);
 			_filtersByIncludedComponents = new List<EcsFilter>[capacity];
 			_filtersByExcludedComponents = new List<EcsFilter>[capacity];
+			_filtersByTagMask = new TaggedFilter[capacity];
 			_poolDenseSize = cfg.PoolDenseSize > 0 ? cfg.PoolDenseSize : Config.PoolDenseSizeDefault;
 			_poolRecycledSize = cfg.PoolRecycledSize > 0 ? cfg.PoolRecycledSize : Config.PoolRecycledSizeDefault;
 			_poolsCount = 0;
@@ -161,7 +176,7 @@ namespace Leopotam.EcsLite {
 			_destroyed = true;
 			for (var i = _entitiesCount - 1; i >= 0; i--) {
 				ref var entityData = ref Entities[i];
-				if (entityData.ComponentsCount > 0) {
+				if (entityData.HasComponents) {
 					DelEntity (i);
 				}
 			}
@@ -193,14 +208,34 @@ namespace Leopotam.EcsLite {
 			return !_destroyed;
 		}
 
+		/// <summary>
+		/// Return entityData to this entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
+		public ref EntityData GetEntityData(int packedEntity) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			return ref Entities[rawEntity];
+		}
 
-		public int NewEntity () {
+		public int NewEntity (uint entityType=0) {
+#if EZ_SANITY_CHECK
+			// check if entityType is valid. if the entityType exceeds the possible range it would automatically
+			// set tag-switches which should not be done.
+			// At least not for now. It might have a usecase :thinking: 
+			if ( (entityType & ~TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"NewEntity: entityTypeId out of range! You are only allowed to use values from 0 to {TAGFILTERMASK_ENTITY_TYPE}");
+			}
+#endif
 			int entity;
-			int gen = 0;
+			uint gen = 0;
 			if (_recycledEntitiesCount > 0) {
 				entity = _recycledEntities[--_recycledEntitiesCount];
 				ref var entityData = ref Entities[entity];
-				gen = entityData.Gen = (short) -entityData.Gen;
+				entityData.ReactiveDestroyed();
+				gen = entityData.Gen;
+				// set the entityType as initial bitmask, only having the entityType and no tags attached
+				entityData.tagBitMask = entityType;
 			} else {
 				// new entity.
 				if (_entitiesCount == Entities.Length) {
@@ -220,7 +255,9 @@ namespace Leopotam.EcsLite {
 #endif
 				}
 				entity = _entitiesCount++;
-				gen = Entities[entity].Gen = 1;
+				gen = 0; // we start with generation 0
+				// set the entityType as initial bitmask, only having the entityType and no tags attached
+				Entities[entity].tagBitMask = entityType;
 			}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			_leakedEntities.Add (entity);
@@ -231,22 +268,119 @@ namespace Leopotam.EcsLite {
 			}
 #endif
 #if ECS_INT_PACKED
-			entity = PackEntity(entity, gen);
+			entity = PackEntity(entity, (int)gen);
 #endif
 			return entity;
+		}
+
+
+		/// <summary>
+		/// Clear all tags from entity-statemask
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		public void ClearEntityStateMask(int packedEntity) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+
+			// work directly on the _bitmask-value
+			uint newMask = Entities[rawEntity].tagBitMask;
+			newMask &= TAGFILTERMASK_ENTITY_TYPE;
+			OnEntityTagChangeInternal(packedEntity, newMask);
+
+			// TODO: execute filters
+		}
+
+
+		/// <summary>
+		/// Set the entityStateMask exactly to this value. 
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="setMask"></param>
+		public void SetEntityStateMaskDirectly(int packedEntity, UInt32 setMask) {
+#if EZ_SANITY_CHECK
+			if ((setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"SetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
+			}
+#endif
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+
+			// work directly on the _bitmask-value
+			uint newMask = Entities[rawEntity].tagBitMask;
+			// clear mask to preserve the entityType
+			newMask &= ~TAGFILTERMASK_ENTITY_TYPE;
+			newMask |= setMask;
+			OnEntityTagChangeInternal(packedEntity, newMask);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="setMask"></param>
+		public void SetEntityStateMaskBits(int packedEntity, UInt32 setMask) {
+#if EZ_SANITY_CHECK
+			if ( (setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"SetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
+			}
+#endif
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			
+			// work directly on the _bitmask-value
+			uint newMask = Entities[rawEntity].tagBitMask;
+			newMask |= setMask;
+
+			OnEntityTagChangeInternal(packedEntity, newMask);
+		}
+
+		/// <summary>
+		/// Set filtermask(setMask  for the corresponding entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="setMask"></param>
+		/// <param name="unsetMask"></param>
+		public void SetEntityStateMaskBits(int packedEntity, UInt32 setMask, uint unsetMask) {
+#if EZ_SANITY_CHECK
+			if ((setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"SetMask.setMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
+			}
+			if ((setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"SetMask.unsetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
+			}
+#endif
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+
+			// work directly on the _bitmask-value
+			uint mask = Entities[rawEntity].tagBitMask;
+			mask |= setMask;
+
+			OnEntityTagChangeInternal(packedEntity, mask);
+		}
+
+
+		public void UnsetEntityStateMaskBits(int packedEntity, UInt32 unsetMask) {
+#if EZ_SANITY_CHECK
+			if ((unsetMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
+				throw new Exception($"SetMask[entity:{packedEntity} mask:{unsetMask}]: Tried to set illegal setMask: mask would change entity-type!");
+			}
+#endif
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+
+			// work directly on the _bitmask-value
+			uint newMaks = Entities[rawEntity].tagBitMask;
+			newMaks &= ~unsetMask;
+			OnEntityTagChangeInternal(packedEntity, newMaks);
 		}
 
 #if ECS_INT_PACKED
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int PackEntity(int plainEntity) {
-			int gen = GetEntityGen(plainEntity) << SHIFT_GEN;
+			int gen = (int)GetEntityGen(plainEntity) << ENTITYID_SHIFT_GEN;
 			int packedEntity = worldBitmask | gen | plainEntity;
 			return packedEntity;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int PackEntity(int plainEntity,int gen) {
-			gen = gen << SHIFT_GEN;
+			gen = gen << ENTITYID_SHIFT_GEN;
 			int packedEntity = worldBitmask | gen | plainEntity;
 			return packedEntity;
 		}
@@ -257,11 +391,19 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static (int, int, int) UnpackEntity(int packedEntity) {
+		public static (int, int, uint) UnpackEntity(int packedEntity) {
 			// due to better inlining, dont using the specialized methods here. 
-			int rawEntity = packedEntity & MASK_ENTITY;
-			int worldID = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
-			int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
+			int worldID = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
+#if EZ_SANITY_CHECK
+			// check if generation of the packed entity fit with the generation of this entity in the ecs.
+			// If there is a mismatch this means that we stored a destroyed entity somewhere!
+			uint ecsGen = EcsWorld.worlds[worldID].GetEntityGen(packedEntity);
+			if (gen != ecsGen) {
+				throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{ecsGen} current:{gen}] Seems we stored a destroyed Entity somewhere!");
+			}
+#endif
 			return (rawEntity, worldID, gen);
 		}
 
@@ -271,39 +413,56 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static (int, T, int) UnpackEntityWithWorld<T>(int packedEntity) where T:EcsWorld {
+		public static (int, T, uint) UnpackEntityWithWorld<T>(int packedEntity) where T:EcsWorld {
 			// due to better inlining, dont using the specialized methods here. 
-			int rawEntity = packedEntity & MASK_ENTITY;
-			int worldID = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
+			int worldID = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
 			EcsWorld world = worlds[worldID];
-			int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
+#if EZ_SANITY_CHECK
+			// check if generation of the packed entity fit with the generation of this entity in the ecs.
+			// If there is a mismatch this means that we stored a destroyed entity somewhere!
+			uint ecsGen = EcsWorld.worlds[worldID].GetEntityGen(packedEntity);
+			if (gen != ecsGen) {
+				throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{ecsGen} current:{gen}] Seems we stored a destroyed Entity somewhere!");
+			}
+#endif
 			return (rawEntity, UnsafeUtility.As<EcsWorld,T>(ref world), gen);
 			//return (rawEntity, (T)world, gen);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int GetPackedGen(int packedEntity) {
-			int gen = (packedEntity & MASK_GEN) >> SHIFT_GEN;
+		public static uint GetPackedGen(int packedEntity) {
+			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
 			return gen;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int GetPackedWorldID(int packedEntity) {
-			int worldId = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
 			return worldId;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T GetPackedWorld<T>(int packedEntity) where T:EcsWorld {
-			int worldId = (packedEntity & MASK_WORLD) >> SHIFT_WORLD;
+			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
 			T world = UnsafeUtility.As<EcsWorld, T>(ref worlds[worldId]);
+#if EZ_SANITY_CHECK
+			// check if generation of the packed entity fit with the generation of this entity in the ecs.
+			// If there is a mismatch this means that we stored a destroyed entity somewhere!
+			uint ecsGen = world.GetEntityGen(packedEntity);
+			uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+			if (ecsGen != packedGen) {
+				throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{packedGen} current:{ecsGen}] Seems we stored a destroyed Entity somewhere!");
+			}
+#endif
 			//T world = (T)worlds[worldId];
 			return world;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int GetPackedRawEntityId(int packedEntity) {
-			var rawEntity = packedEntity & MASK_ENTITY;
+			var rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
 			return rawEntity;
 		}
 #endif
@@ -316,13 +475,13 @@ namespace Leopotam.EcsLite {
 			if (entity < 0 || entity >= _entitiesCount) { throw new Exception ("Cant touch destroyed entity."); }
 #endif
 			ref var entityData = ref Entities[entity];
-			if (entityData.Gen < 0) {
+			if (entityData.Destroyed) {
 				return;
 			}
 			// kill components.
-			if (entityData.ComponentsCount > 0) {
+			if (entityData.HasComponents) {
 				var idx = 0;
-				while (entityData.ComponentsCount > 0 && idx < _poolsCount) {
+				while (entityData.HasComponents && idx < _poolsCount) {
 					for (; idx < _poolsCount; idx++) {
 						if (_pools[idx].Has (entity)) {
 							_pools[idx++].Del (entity);
@@ -331,13 +490,18 @@ namespace Leopotam.EcsLite {
 					}
 				}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-				if (entityData.ComponentsCount != 0) { 
-					throw new Exception ($"Invalid components count on entity {entity} => {entityData.ComponentsCount}."); 
+				if (entityData.HasComponents) {
+					// TODO: show component bitmasks
+					throw new Exception ($"Invalid components count on entity {entity} still has components!"); 
 				}
 #endif
 				return;
 			}
-			entityData.Gen = (short) (entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1));
+
+			//entityData.Gen = (uint)(entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1)); // no need to check for end of short. This is done on Gen-Property 
+			// entityData.Gen = (uint)(-(entityData.Gen + 1));
+			entityData.Destroy();
+
 			if (_recycledEntitiesCount == _recycledEntities.Length) {
 				Array.Resize (ref _recycledEntities, _recycledEntitiesCount << 1);
 			}
@@ -349,16 +513,16 @@ namespace Leopotam.EcsLite {
 #endif
 		}
 
-		[MethodImpl (MethodImplOptions.AggressiveInlining)]
-		public int GetComponentsCount (int entity) {
-#if ECS_INT_PACKED
-			entity = EcsWorld.GetPackedRawEntityId(entity);
-#endif
-			return Entities[entity].ComponentsCount;
-		}
+//		[MethodImpl (MethodImplOptions.AggressiveInlining)]
+//		public int GetComponentsCount (int entity) {
+//#if ECS_INT_PACKED
+//			entity = EcsWorld.GetPackedRawEntityId(entity);
+//#endif
+//			return Entities[entity].ComponentsCount;
+//		}
 
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
-		public short GetEntityGen (int entity) {
+		public uint GetEntityGen (int entity) {
 #if ECS_INT_PACKED
 			entity = EcsWorld.GetPackedRawEntityId(entity);
 #endif
@@ -417,7 +581,7 @@ namespace Leopotam.EcsLite {
 			for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
 				ref var entityData = ref Entities[i];
 				// should we skip empty entities here?
-				if (entityData.Gen > 0 && entityData.ComponentsCount >= 0) {
+				if (!entityData.Destroyed) {
 					entities[id++] = i;
 				}
 			}
@@ -443,14 +607,17 @@ namespace Leopotam.EcsLite {
 #if ECS_INT_PACKED
 			entity = EcsWorld.GetPackedRawEntityId(entity);
 #endif
-			var itemsCount = Entities[entity].ComponentsCount;
-			if (itemsCount == 0) { return 0; }
-			if (list == null || list.Length < itemsCount) {
+			// TODO: Do I want to have a component-count equivalent? Not,yet
+			//var itemsCount = Entities[entity].ComponentsCount;
+			//if (itemsCount == 0) { return 0; }
+			int itemsCount = 0;
+			if (list == null || list.Length < _pools.Length) {
 				list = new object[_pools.Length];
 			}
 			for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++) {
 				if (_pools[i].Has (entity)) {
 					list[j++] = _pools[i].GetRaw (entity);
+					itemsCount++;
 				}
 			}
 			return itemsCount;
@@ -466,14 +633,14 @@ namespace Leopotam.EcsLite {
 #if ECS_INT_PACKED
 			entity = EcsWorld.GetPackedRawEntityId(entity);
 #endif
-			var itemsCount = Entities[entity].ComponentsCount;
-			if (itemsCount == 0) { return 0; }
-			if (list == null || list.Length < itemsCount) {
+			int itemsCount = 0;
+			if (list == null || list.Length < _pools.Length) {
 				list = new Type[_pools.Length];
 			}
 			for (int i = 0, j = 0, iMax = _poolsCount; i < iMax; i++) {
 				if (_pools[i].Has (entity)) {
 					list[j++] = _pools[i].GetComponentType ();
+					itemsCount++;
 				}
 			}
 			return itemsCount;
@@ -485,16 +652,34 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
 		public bool IsEntityAliveInternal (int entity) {
-			return entity >= 0 && entity < _entitiesCount && Entities[entity].Gen > 0;
+			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 		}
 
 		(EcsFilter<T>, bool) GetFilterInternal<T> (Mask mask, int capacity = 16) where T:IFilterData {
 			var hash = mask.Hash;
 			var exists = _hashedFilters.TryGetValue (hash, out var filter);
-			if (exists) { return ((EcsFilter<T>)filter, false); }
+			if (exists) { 
+				// reuse!
+				return ((EcsFilter<T>)filter, false); 
+			}
 			filter = new EcsFilter<T> (this, mask, capacity, Entities.Length);
 			_hashedFilters[hash] = filter;
 			_allFilters.Add (filter);
+
+			// add filter to tagMask-lookup
+			UInt32 tagmaskHash = mask.TagMaskHash;
+			if (tagmaskHash != 0) {
+				_filtersByTagMask[taggedFilterAmount] = new TaggedFilter() {
+					filterBitMaskData = mask.bitmaskData,
+					filter = filter
+				};
+
+				taggedFilterAmount++;
+				if (taggedFilterAmount == _filtersByTagMask.Length) {
+					Array.Resize(ref _filtersByTagMask, _filtersByTagMask.Length << 1);
+				}
+			}
+
 			// add to component dictionaries for fast compatibility scan.
 			for (int i = 0, iMax = mask.IncludeCount; i < iMax; i++) {
 				var list = _filtersByIncludedComponents[mask.Include[i]];
@@ -515,7 +700,7 @@ namespace Leopotam.EcsLite {
 			// scan exist entities for compatibility with new filter.
 			for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
 				ref var entityData = ref Entities[i];
-				if (entityData.ComponentsCount > 0 && IsMaskCompatible (mask, i)) {
+				if (entityData.HasComponents && IsMaskCompatible (ref mask.bitmaskData, i, entityData.tagBitMask)) {
 					filter.AddEntity (i);
 				}
 			}
@@ -527,17 +712,80 @@ namespace Leopotam.EcsLite {
 			return ((EcsFilter<T>)filter, true);
 		}
 
+
+		private List<EcsFilter> removeFromFilter = new List<EcsFilter>();
+		private List<EcsFilter> addToFilter = new List<EcsFilter>();
+
+
+		/// <summary>
+		/// reorganize filters if entities tags changed. This reacts works also on multiple tag changes
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <param name="newMask"></param>
+		private void OnEntityTagChangeInternal(int entity,UInt32 newMask) {
+
+			ref EntityData entityData = ref Entities[entity];
+			UInt32 oldBitmask = entityData.tagBitMask;
+			if (oldBitmask == newMask) {
+				// nothing to change
+				return;
+			}
+	
+			removeFromFilter.Clear();
+			addToFilter.Clear();
+
+			// check filters from which we potentially need to remove this entity
+			for (int i = 0; i < taggedFilterAmount; i++) {
+				ref TaggedFilter filterData = ref _filtersByTagMask[i];
+				
+				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, entity, oldBitmask);
+				if (maskCompatible) {
+					// this entity is in this filter!
+					// what we know:
+					// - all component include and exclude fit
+					// - all tags set/unset fit
+					// - component-checks are still valid after tagMask change
+					// - we need to check if the newMask makes the filter's tagMask invalid and remove if yes
+					
+					
+					// check if new mask is compatible
+					if (!IsTagsMaskCompatible(ref _filtersByTagMask[i].filterBitMaskData, newMask)) {
+						removeFromFilter.Add(filterData.filter);
+					}
+				} else {
+					// this entity is not (yet) in this filter
+					// check if the new mask would apply
+					bool newMaskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, entity, newMask);
+					if (newMaskCompatible) {
+						addToFilter.Add(filterData.filter);
+					}
+				}
+			}
+
+			// now execute removals
+			for (int i = 0, iEnd = removeFromFilter.Count; i < iEnd; i++) {
+				removeFromFilter[i].RemoveEntity(entity);
+			}
+			// change entity to new tagMask
+			entityData.tagBitMask = newMask;
+			// now add
+			for (int i = 0,iEnd = addToFilter.Count; i < iEnd; i++) {
+				addToFilter[i].AddEntity(entity);
+			}
+		}
+
 		/// <summary>
 		/// Needs to be called with unpacked entity 
 		/// </summary>
 		public void OnEntityChangeInternal (int entity, int componentType, bool added) {
 			var includeList = _filtersByIncludedComponents[componentType];
 			var excludeList = _filtersByExcludedComponents[componentType];
+			
 			if (added) {
 				// add component.
 				if (includeList != null) {
 					foreach (var filter in includeList) {
-						if (IsMaskCompatible (filter.GetMask (), entity)) {
+						if (IsMaskCompatible (ref filter.GetMask().bitmaskData , entity, Entities[entity].tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 							if (filter.SparseEntities[entity] > 0) { throw new Exception ("Entity already in filter."); }
 #endif
@@ -547,7 +795,7 @@ namespace Leopotam.EcsLite {
 				}
 				if (excludeList != null) {
 					foreach (var filter in excludeList) {
-						if (IsMaskCompatibleWithout (filter.GetMask (), entity, componentType)) {
+						if (!IsMaskCompatible (ref filter.GetMask().bitmaskData , entity,Entities[entity].tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 							if (filter.SparseEntities[entity] == 0) { throw new Exception ("Entity not in filter."); }
 #endif
@@ -559,7 +807,7 @@ namespace Leopotam.EcsLite {
 				// remove component.
 				if (includeList != null) {
 					foreach (var filter in includeList) {
-						if (IsMaskCompatible (filter.GetMask (), entity)) {
+						if (IsMaskCompatible (ref filter.GetMask ().bitmaskData, entity, Entities[entity].tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 							if (filter.SparseEntities[entity] == 0) { throw new Exception ("Entity not in filter."); }
 #endif
@@ -569,7 +817,7 @@ namespace Leopotam.EcsLite {
 				}
 				if (excludeList != null) {
 					foreach (var filter in excludeList) {
-						if (IsMaskCompatibleWithout (filter.GetMask (), entity, componentType)) {
+						if (!IsMaskCompatible (ref filter.GetMask ().bitmaskData, entity, Entities[entity].tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 							if (filter.SparseEntities[entity] > 0) { throw new Exception ("Entity already in filter."); }
 #endif
@@ -580,19 +828,55 @@ namespace Leopotam.EcsLite {
 			}
 		}
 
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData,uint entityTagMask) {
+			bool tagSetApplies;
+			bool tagUnsetApplies;
+			tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
+			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entityTagMask & filterBitmaskData.tagMaskNotSet) != 0;
+			return tagSetApplies && tagUnsetApplies;
+		}
+
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
-		bool IsMaskCompatible (Mask filterMask, int entity) {
-			for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
-				if (!_pools[filterMask.Include[i]].Has (entity)) {
-					return false;
+		bool IsMaskCompatible (ref Mask.BitMaskData filterBitmaskData, int entity, uint entityTagBitMask) {
+			ref EntityData entityData = ref Entities[entity];
+
+			bool includeComponentsApplies;
+			bool excludeComponentsApplies;
+
+			unsafe {
+#if EZ_SANITY_CHECK
+				if (ENTITYDATA_AMOUNT_COMPONENT_BITMASKS != 2) {
+					throw new Exception("Mask check is only supported for 2 long-bitmasks! Modify check to fit to more or less! This is hardcoded due to performance!");
 				}
+#endif
+
+				bool tagsCompatible = IsTagsMaskCompatible(ref filterBitmaskData, entityTagBitMask);
+
+				// remark: componentMasks: 0+1=includeComponentMasks 2+3=excludeComponentMasks
+				
+				includeComponentsApplies = (entityData.componentsBitMask[0] & filterBitmaskData.componentMasks[0]) == filterBitmaskData.componentMasks[0]
+								&& (entityData.componentsBitMask[1] & filterBitmaskData.componentMasks[1]) == filterBitmaskData.componentMasks[1];
+
+				excludeComponentsApplies = (entityData.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
+								&& (entityData.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
+
+				//TODO: once we are sure this is working do merge includeApplies so that it stops checking on first fail!
+				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
 			}
-			for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
-				if (_pools[filterMask.Exclude[i]].Has (entity)) {
-					return false;
-				}
-			}
-			return true;
+			
+			//for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
+			//	if (!_pools[filterMask.Include[i]].Has (entity)) {
+			//		return false;
+			//	}
+			//}
+			//for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
+			//	if (_pools[filterMask.Exclude[i]].Has (entity)) {
+			//		return false;
+			//	}
+			//}
+			//return true;
 		}
 
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -633,12 +917,19 @@ namespace Leopotam.EcsLite {
 	[Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
 		public sealed class Mask {
+			public struct BitMaskData {
+				internal UInt32 tagMaskSet;
+				internal UInt32 tagMaskNotSet;
+				internal UInt64[] componentMasks;
+			}
 			readonly EcsWorld _world;
 			internal int[] Include;
 			internal int[] Exclude;
 			internal int IncludeCount;
 			internal int ExcludeCount;
 			internal int Hash;
+			internal BitMaskData bitmaskData;
+
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			bool _built;
 #endif
@@ -647,6 +938,7 @@ namespace Leopotam.EcsLite {
 				_world = world;
 				Include = new int[8];
 				Exclude = new int[2];
+				bitmaskData.componentMasks = new UInt64[ENTITYDATA_AMOUNT_COMPONENT_BITMASKS*2]; 
 				Reset ();
 			}
 
@@ -658,6 +950,28 @@ namespace Leopotam.EcsLite {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				_built = false;
 #endif
+			}
+
+			public UInt32 TagMaskHash => (bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet;
+			
+			/// <summary>
+			/// Tag-bits that needs to be set to be a valid filter 
+			/// </summary>
+			/// <param name="bitmask"></param>
+			/// <returns></returns>
+			public Mask SetTagmaskSet(UInt32 bitmask) {
+				bitmaskData.tagMaskSet = bitmask;
+				return this;
+			}
+
+			/// <summary>
+			/// Tag-bits that must not be set to be a valid filter
+			/// </summary>
+			/// <param name="bitmask"></param>
+			/// <returns></returns>
+			public Mask SetTagmaskNotSet(UInt32 bitmask) {
+				bitmaskData.tagMaskNotSet = bitmask;
+				return this;
 			}
 
 			[MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -705,6 +1019,11 @@ namespace Leopotam.EcsLite {
 				Array.Sort (Exclude, 0, ExcludeCount);
 				// calculate hash.
 				Hash = IncludeCount + ExcludeCount;
+
+				// take tagMasks into account for hash-calculation
+				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskNotSet);
+				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskSet);
+
 				for (int i = 0, iMax = IncludeCount; i < iMax; i++) {
 					Hash = unchecked (Hash * 314159 + Include[i]);
 				}
@@ -726,9 +1045,98 @@ namespace Leopotam.EcsLite {
 			}
 		}
 
-		public struct EntityData {
-			public short Gen;
-			public short ComponentsCount;
+		public unsafe struct EntityData {
+			public const uint MASK_GEN            = 0b0000000000000000000000001111;
+			public const uint MASK_HAS_COMPONENTS = 0b0000000000000000000000010000;
+			public const uint MASK_DESTROYED      = 0b0000000000000000000000100000;
+			// bit 01-04 gen
+			// bit 05    has components
+			// bit 06-32 unused
+			public UInt32 entityInfo;
+			
+			/// <summary>
+			/// Bitmask representing somekind of state of that entity. DO NOT SET VALUE DIRECTLY!!  THE EcsWorld needs to know if data changed here!!! As long as you know what you are doing....don't do it!
+			/// Use .... not sure what, yet.  
+			/// </summary>
+			// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
+			// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
+			// bit 10-32 custom-tags (entity-type specific tags)
+			public UInt32 tagBitMask;
+
+			/// <summary>
+			/// Two 64bit longs to check for 128 components set to this entity
+			/// </summary>
+			[UnityEngine.Tooltip("Two 64bit longs to check for 128 components set to this entity")]
+			[MarshalAs(UnmanagedType.ByValArray/*, SizeConst = 123*/)]
+			public fixed UInt64 componentsBitMask[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+
+			public void Destroy() {
+#if EZ_SANITY_CHECK
+				if (Destroyed) {
+					throw new Exception($"Tried to destroy an already as destroyed marked entity");
+				}
+#endif
+				// set destroyed bit
+				entityInfo |= MASK_DESTROYED;
+				// increate gen to make sure it gets invalidated for packed-entities
+				// make sure you stay in gen-number-range by &-MASK_GEN
+				uint newGen = (Gen + 1) & MASK_GEN;
+				
+				entityInfo &= ~(MASK_GEN); // clear GEN-bits
+				entityInfo |= newGen;      // set value
+			}
+
+			public void ReactiveDestroyed() {
+#if EZ_SANITY_CHECK
+				if (!Destroyed) {
+					throw new Exception("Tried to activate an entity that is not marked as destroyed");
+				}
+#endif
+				entityInfo &= ~MASK_DESTROYED;
+				// no need to set a new generation as this is done by the destruction
+			}
+
+
+			public uint Gen => (entityInfo & MASK_GEN);
+					
+			public bool HasComponents => (entityInfo & MASK_HAS_COMPONENTS) > 0;
+			
+			public bool Destroyed => (entityInfo & MASK_DESTROYED) > 0;
+
+			/// <summary>
+			/// TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask
+			/// </summary>
+			[UnityEngine.Tooltip("TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask")]
+			public UInt32 TagMaskFilterKey => (tagBitMask << 32) + (~tagBitMask);
+
+			/// <summary>
+			/// Get entity-type (stored in the tagBitMask)
+			/// </summary>
+			[UnityEngine.Tooltip("Get entity-type (stored in the tagBitMask)")]
+			public uint EntityType => tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
+
+			public void UpdateHasComponents() {
+				for (int i = 0; i < EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS; i++) {
+					if (componentsBitMask[i] > 0) {
+						entityInfo |= MASK_HAS_COMPONENTS;
+						return;
+					}
+				}
+				entityInfo &= ~MASK_HAS_COMPONENTS;
+			}
+
+			public void SetComponentBit(int componentBitmaskId, uint setMask) {
+				componentsBitMask[componentBitmaskId] |= setMask;
+				UpdateHasComponents();
+			}
+
+			public void UnsetComponentBit(int componentBitmaskId,uint unsetMask) {
+				componentsBitMask[componentBitmaskId] &= ~unsetMask;
+				UpdateHasComponents();
+			}
+
+
+
 		}
 	}
 

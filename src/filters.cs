@@ -20,10 +20,25 @@ namespace Leopotam.EcsLite {
         void SetData();
     }
 
+	/// <summary>
+	/// Use those filters to define FilterData. Do not use IFilterData directly (at least not it you want the FilterData being generated for you! )
+	/// </summary>
 	public interface IFilterDataDefinition { }
+	/// <summary>
+	/// Use those filters to define FilterData. Do not use IFilterData directly (at least not it you want the FilterData being generated for you! )
+	/// </summary>
 	public interface IFilterData<A> : IFilterDataDefinition { }
+	/// <summary>
+	/// Use those filters to define FilterData. Do not use IFilterData directly (at least not it you want the FilterData being generated for you! )
+	/// </summary>
 	public interface IFilterData<A, B> : IFilterDataDefinition { }
+	/// <summary>
+	/// Use those filters to define FilterData. Do not use IFilterData directly (at least not it you want the FilterData being generated for you! )
+	/// </summary>
 	public interface IFilterData<A, B, C> : IFilterDataDefinition { }
+	/// <summary>
+	/// Use those filters to define FilterData. Do not use IFilterData directly (at least not it you want the FilterData being generated for you! )
+	/// </summary>
 	public interface IFilterData<A, B, C, D> : IFilterDataDefinition { }
 
 	public struct NoFilterData : IFilterData
