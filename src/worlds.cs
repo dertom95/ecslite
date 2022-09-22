@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -278,6 +278,7 @@ namespace Leopotam.EcsLite {
 		/// Clear all tags from entity-statemask
 		/// </summary>
 		/// <param name="packedEntity"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void ClearEntityStateMask(int packedEntity) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
@@ -291,32 +292,12 @@ namespace Leopotam.EcsLite {
 
 
 		/// <summary>
-		/// Set the entityStateMask exactly to this value. 
+		/// Add bitmask (or operation) to entity's tagMask
 		/// </summary>
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
-		public void SetEntityStateMaskDirectly(int packedEntity, UInt32 setMask) {
-#if EZ_SANITY_CHECK
-			if ((setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
-				throw new Exception($"SetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
-			}
-#endif
-			int rawEntity = GetPackedRawEntityId(packedEntity);
-
-			// work directly on the _bitmask-value
-			uint newMask = Entities[rawEntity].tagBitMask;
-			// clear mask to preserve the entityType
-			newMask &= ~TAGFILTERMASK_ENTITY_TYPE;
-			newMask |= setMask;
-			OnEntityTagChangeInternal(packedEntity, newMask);
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="packedEntity"></param>
-		/// <param name="setMask"></param>
-		public void SetEntityStateMaskBits(int packedEntity, UInt32 setMask) {
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void AddTagMask(int packedEntity, UInt32 setMask) {
 #if EZ_SANITY_CHECK
 			if ( (setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -324,20 +305,31 @@ namespace Leopotam.EcsLite {
 #endif
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 			
-			// work directly on the _bitmask-value
 			uint newMask = Entities[rawEntity].tagBitMask;
 			newMask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, newMask);
 		}
 
+
 		/// <summary>
-		/// Set filtermask(setMask  for the corresponding entity
+		/// Get tagmask of specified entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public UInt32 GetTagMask(int packedEntity) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			return Entities[rawEntity].tagBitMask;
+		}
+
+		/// <summary>
+		/// Set specified mask as is. Only keep the entityType
 		/// </summary>
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
-		/// <param name="unsetMask"></param>
-		public void SetEntityStateMaskBits(int packedEntity, UInt32 setMask, uint unsetMask) {
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void SetTagMask(int packedEntity, UInt32 setMask) {
 #if EZ_SANITY_CHECK
 			if ((setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask.setMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -348,15 +340,21 @@ namespace Leopotam.EcsLite {
 #endif
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
-			// work directly on the _bitmask-value
-			uint mask = Entities[rawEntity].tagBitMask;
+			// use a clean-mask with only the entityType set
+			uint mask = Entities[rawEntity].tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
 			mask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, mask);
 		}
 
 
-		public void UnsetEntityStateMaskBits(int packedEntity, UInt32 unsetMask) {
+		/// <summary>
+		/// Unset the specified bits from the entity's tagMask
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="unsetMask"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]/// 
+		public void UnsetTagMask(int packedEntity, UInt32 unsetMask) {
 #if EZ_SANITY_CHECK
 			if ((unsetMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask[entity:{packedEntity} mask:{unsetMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -862,7 +860,7 @@ namespace Leopotam.EcsLite {
 				excludeComponentsApplies = (entityData.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
 								&& (entityData.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
 
-				//TODO: once we are sure this is working do merge includeApplies so that it stops checking on first fail!
+				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
 			}
 			
@@ -920,7 +918,7 @@ namespace Leopotam.EcsLite {
 			public struct BitMaskData {
 				internal UInt32 tagMaskSet;
 				internal UInt32 tagMaskNotSet;
-				internal UInt64[] componentMasks;
+				internal UInt64[] componentMasks; // TODO make it fixed
 			}
 			readonly EcsWorld _world;
 			internal int[] Include;
@@ -959,7 +957,7 @@ namespace Leopotam.EcsLite {
 			/// </summary>
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
-			public Mask SetTagmaskSet(UInt32 bitmask) {
+			public Mask TagsSet(UInt32 bitmask) {
 				bitmaskData.tagMaskSet = bitmask;
 				return this;
 			}
@@ -969,21 +967,25 @@ namespace Leopotam.EcsLite {
 			/// </summary>
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
-			public Mask SetTagmaskNotSet(UInt32 bitmask) {
+			public Mask TagsNotSet(UInt32 bitmask) {
 				bitmaskData.tagMaskNotSet = bitmask;
 				return this;
 			}
 
 			[MethodImpl (MethodImplOptions.AggressiveInlining)]
 			public Mask Inc<T> () where T : struct {
-				var poolId = _world.GetPool<T> ().GetId ();
+				var pool = _world.GetPool<T>();
+				var poolId = pool.GetId ();
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				if (_built) { throw new Exception ("Cant change built mask."); }
 				if (Array.IndexOf (Include, poolId, 0, IncludeCount) != -1) { throw new Exception ($"{typeof (T).Name} already in constraints list."); }
 				if (Array.IndexOf (Exclude, poolId, 0, ExcludeCount) != -1) { throw new Exception ($"{typeof (T).Name} already in constraints list."); }
 #endif
-				if (IncludeCount == Include.Length) { Array.Resize (ref Include, IncludeCount << 1); }
-				Include[IncludeCount++] = poolId;
+				if (IncludeCount == Include.Length) { 
+					Array.Resize (ref Include, IncludeCount << 1); 
+				}
+				Include[IncludeCount++] = poolId; // TODO: Include[] any use cases left? Keep it for now...
+				bitmaskData.componentMasks[pool._bitmaskFieldId]|=pool._componentBitmask;
 				return this;
 			}
 
@@ -992,14 +994,19 @@ namespace Leopotam.EcsLite {
 #endif
 			[MethodImpl (MethodImplOptions.AggressiveInlining)]
 			public Mask Exc<T> () where T : struct {
-				var poolId = _world.GetPool<T> ().GetId ();
+				var pool = _world.GetPool<T>();
+				var poolId = pool.GetId();
+
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				if (_built) { throw new Exception ("Cant change built mask."); }
 				if (Array.IndexOf (Include, poolId, 0, IncludeCount) != -1) { throw new Exception ($"{typeof (T).Name} already in constraints list."); }
 				if (Array.IndexOf (Exclude, poolId, 0, ExcludeCount) != -1) { throw new Exception ($"{typeof (T).Name} already in constraints list."); }
 #endif
-				if (ExcludeCount == Exclude.Length) { Array.Resize (ref Exclude, ExcludeCount << 1); }
-				Exclude[ExcludeCount++] = poolId;
+				if (ExcludeCount == Exclude.Length) { 
+					Array.Resize (ref Exclude, ExcludeCount << 1); 
+				}
+				Exclude[ExcludeCount++] = poolId; // TODO: exclude deprecated. Any usecase left? Let's keep it for now
+				bitmaskData.componentMasks[pool._bitmaskFieldId+ENTITYDATA_AMOUNT_COMPONENT_BITMASKS] |= pool._componentBitmask;
 				return this;
 			}
 
