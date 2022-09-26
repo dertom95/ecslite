@@ -160,8 +160,10 @@ namespace Leopotam.EcsLite {
             if (AddDelayedOp (true, entity)) { return; }
             if (_entitiesCount == _denseEntities.Length) {
                 Array.Resize (ref _denseEntities, _entitiesCount << 1);
-				Array.Resize(ref _filterData, _entitiesCount << 1);
-            }
+				if (_filterData != null) {
+					Array.Resize(ref _filterData, _entitiesCount << 1);
+				}
+			}
 #if ECS_INT_PACKED
             int packedEntity = _world.PackEntity(entity);
             int densePosition = _entitiesCount;
