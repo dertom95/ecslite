@@ -292,12 +292,12 @@ namespace Leopotam.EcsLite {
 
 
 		/// <summary>
-		/// Add bitmask (or operation) to entity's tagMask
+		/// Add bitmask (or operation) to entity's tagMask multiple 
 		/// </summary>
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void AddTagMask(int packedEntity, UInt32 setMask) {
+		private void AddMultiTagMask(int packedEntity, UInt32 setMask) {
 #if EZ_SANITY_CHECK
 			if ( (setMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask[entity:{packedEntity} mask:{setMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -309,6 +309,48 @@ namespace Leopotam.EcsLite {
 			newMask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, newMask);
+		}
+
+		/// <summary>
+		/// Add bitmask (or operation) to entity's tagMask multiple 
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1">tag to be set</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void AddTag(int packedEntity, UInt32 tag1) {
+			// TODO: check that only sigle tag is used (no combination)
+
+			// for now use the multiTag version
+			AddMultiTagMask(packedEntity, tag1);
+		}
+
+		/// <summary>
+		/// Add bitmask (or operation) to entity's tagMask multiple 
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1">tag to be set</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void AddTag(int packedEntity, UInt32 tag1, UInt32 tag2) {
+			// TODO: check that only sigle tag is used (no combination)
+
+			// for now use the multiTag version
+			AddMultiTagMask(packedEntity, tag1|tag2);
+		}
+
+
+		/// <summary>
+		/// Add tag to entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1">tag to be set</param>
+		/// <param name="tag2">tag to be set</param>
+		/// <param name="tag3">tag to be set</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void AddTag(int packedEntity, UInt32 tag1, UInt32 tag2, UInt32 tag3) {
+			// TODO: check that only sigle tag is used (no combination)
+
+			// for now use the multiTag version
+			AddMultiTagMask(packedEntity, tag1 | tag2 | tag3);
 		}
 
 
@@ -354,7 +396,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="unsetMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]/// 
-		public void UnsetTagMask(int packedEntity, UInt32 unsetMask) {
+		private void UnsetTagMask(int packedEntity, UInt32 unsetMask) {
 #if EZ_SANITY_CHECK
 			if ((unsetMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask[entity:{packedEntity} mask:{unsetMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -366,6 +408,51 @@ namespace Leopotam.EcsLite {
 			uint newMaks = Entities[rawEntity].tagBitMask;
 			newMaks &= ~unsetMask;
 			OnEntityTagChangeInternal(packedEntity, newMaks);
+		}
+
+		/// <summary>
+		/// Remove tag from entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] 
+		public void RemoveTag(int packedEntity, UInt32 tag1) {
+			// TODO: add check to make sure this is a single-tag
+
+			// TODO: write optimizied code to only check filters that have this tag involved
+			// for now using multicheck. 
+			UnsetTagMask(packedEntity, tag1);
+		}
+
+		/// <summary>
+		/// Remove tag from entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void RemoveTag(int packedEntity, UInt32 tag1,UInt32 tag2) {
+			// TODO: add check to make sure this is a single-tag
+
+			// TODO: write optimizied code to only check filters that have this tag involved
+			// for now using multicheck. 
+			UnsetTagMask(packedEntity, tag1|tag2);
+		}
+
+
+		/// <summary>
+		/// Remove tag from entity
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="tag1"></param>
+		/// <param name="tag2"></param>
+		/// <param name="tag3"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void RemoveTag(int packedEntity, UInt32 tag1, UInt32 tag2, UInt32 tag3) {
+			// TODO: add check to make sure this is a single-tag
+
+			// TODO: write optimizied code to only check filters that have this tag involved
+			// for now using multicheck. 
+			UnsetTagMask(packedEntity, tag1 | tag2 | tag3);
 		}
 
 #if ECS_INT_PACKED
