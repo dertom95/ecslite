@@ -528,6 +528,12 @@ namespace Leopotam.EcsLite {
 			return worldId;
 		}
 
+		/// <summary>
+		/// Get packed EcsWorld as specicalized EcsWorld-Type
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T GetPackedWorld<T>(int packedEntity) where T:EcsWorld {
 			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
@@ -544,6 +550,30 @@ namespace Leopotam.EcsLite {
 			//T world = (T)worlds[worldId];
 			return world;
 		}
+
+
+		/// <summary>
+		/// Get packed world as base-class EcsWorld
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static ref EcsWorld GetPackedWorld(int packedEntity) {
+			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			ref EcsWorld world = ref worlds[worldId];
+#if EZ_SANITY_CHECK
+			// check if generation of the packed entity fit with the generation of this entity in the ecs.
+			// If there is a mismatch this means that we stored a destroyed entity somewhere!
+			uint ecsGen = world.GetEntityGen(packedEntity);
+			uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+			if (ecsGen != packedGen) {
+				throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{packedGen} current:{ecsGen}] Seems we stored a destroyed Entity somewhere!");
+			}
+#endif
+			return ref world;
+		}
+
+
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int GetPackedRawEntityId(int packedEntity) {
@@ -1172,7 +1202,7 @@ namespace Leopotam.EcsLite {
 #endif
 				// set destroyed bit
 				entityInfo |= MASK_DESTROYED;
-				// increate gen to make sure it gets invalidated for packed-entities
+				// create gen to make sure it gets invalidated for packed-entities
 				// make sure you stay in gen-number-range by &-MASK_GEN
 				uint newGen = (Gen + 1) & MASK_GEN;
 				
