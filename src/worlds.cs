@@ -718,6 +718,22 @@ namespace Leopotam.EcsLite {
 			return mask.Inc<T> ();
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Mask Filter(uint tagsSet) {
+			var mask = _masksCount > 0 ? _masks[--_masksCount] : new Mask(this);
+			mask.TagsSet(tagsSet);
+			return mask;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public Mask Filter(uint tagsSet,uint tagsNotSet) {
+			var mask = _masksCount > 0 ? _masks[--_masksCount] : new Mask(this);
+			mask.TagsSet(tagsSet);
+			mask.TagsNotSet(tagsNotSet);
+			return mask;
+		}
+
+
 		public int GetComponents (int entity, ref object[] list) {
 #if ECS_INT_PACKED
 			entity = EcsWorld.GetPackedRawEntityId(entity);
