@@ -942,9 +942,9 @@ namespace Leopotam.EcsLite {
 				if (includeList != null) {
 					foreach (var filter in includeList) {
 						if (!IsMaskCompatible(ref filter.GetMask().bitmaskData, entity, Entities[entity].tagBitMask)) {
-#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] == 0) { throw new Exception("Entity not in filter."); }
-#endif
+							if (filter.SparseEntities[entity] == 0) {
+								continue;
+							}
 							filter.RemoveEntity(entity);
 						}
 					}

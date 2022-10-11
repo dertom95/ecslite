@@ -62,7 +62,7 @@ namespace Leopotam.EcsLite {
     public abstract class EcsFilter {
         internal abstract void ResizeSparseIndex(int capacity);
         internal abstract void AddEntity(int entity);
-        internal abstract void RemoveEntity(int entity);
+        internal abstract void RemoveEntity(int entity,int removeDenseIdx=-1);
         internal abstract EcsWorld.Mask GetMask();
         internal int[] SparseEntities;
         internal bool updateFilters = false;
@@ -184,8 +184,16 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        override internal void RemoveEntity (int entity) {
-            if (AddDelayedOp (false, entity)) { return; }
+        override internal void RemoveEntity (int entity,int _removeDenseIdx=-1) {
+			if (SparseEntities[entity] == 0 && _removeDenseIdx==-1) {
+				// entity already removed or marked to be removed
+				return;
+			}
+            if (AddDelayedOp (false, entity, SparseEntities[entity]-1)) {
+				// mark sparseEnttiy as removed to prevent multiple remove-ops 
+				SparseEntities[entity] = 0;
+				return; 
+			}
 #if LEOECSLITE_FILTER_EVENTS
  #if ECS_INT_PACKED
             ProcessEventListeners(false, _world.PackEntity(entity));
@@ -193,7 +201,7 @@ namespace Leopotam.EcsLite {
             ProcessEventListeners(false, entity);
  #endif
 #endif
-            var removeDenseIdx = SparseEntities[entity] - 1;
+            var removeDenseIdx = _removeDenseIdx!=-1 ? _removeDenseIdx : (SparseEntities[entity] - 1);
             SparseEntities[entity] = 0;
             _entitiesCount--;
             if (removeDenseIdx < _entitiesCount) {
@@ -208,7 +216,7 @@ namespace Leopotam.EcsLite {
         }
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
-        bool AddDelayedOp (bool added, int entity) {
+        bool AddDelayedOp (bool added, int entity, int removeDenseIdx=-1) {
             if (_lockCount <= 0) { return false; }
             if (_delayedOpsCount == _delayedOps.Length) {
                 Array.Resize (ref _delayedOps, _delayedOpsCount << 1);
@@ -216,6 +224,7 @@ namespace Leopotam.EcsLite {
             ref var op = ref _delayedOps[_delayedOpsCount++];
             op.Added = added;
             op.Entity = entity;
+			op.removedDenseIdx = removeDenseIdx;
             return true;
         }
 
@@ -231,7 +240,7 @@ namespace Leopotam.EcsLite {
                     if (op.Added) {
                         AddEntity (op.Entity);
                     } else {
-                        RemoveEntity (op.Entity);
+                        RemoveEntity (op.Entity,op.removedDenseIdx);
                     }
                 }
                 _delayedOpsCount = 0;
@@ -297,6 +306,7 @@ namespace Leopotam.EcsLite {
         struct DelayedOp {
             public bool Added;
             public int Entity;
+			public int removedDenseIdx;
         }
     }
 }
