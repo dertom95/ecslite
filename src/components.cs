@@ -178,7 +178,7 @@ namespace Leopotam.EcsLite {
 				if (_denseItemsCount == _denseItems.Length) {
 					Array.Resize (ref _denseItems, _denseItemsCount << 1);
 					// the memory-positions of the components changed with the resize => for now we mark all filters that they should recatch the data, as we can't be sure what PtrRefs are set in the filterdata
-					_world.MarkFiltersDirty();
+					_world._MarkFiltersDirty();
 				}
 				_denseItemsCount++;
 				_autoReset?.Invoke (ref _denseItems[idx]);
@@ -208,7 +208,9 @@ namespace Leopotam.EcsLite {
 #endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
-			if (_sparseItems[entity] == 0) { throw new Exception ($"Cant get \"{typeof (T).Name}\" component - not attached."); }
+			if (_sparseItems[entity] == 0) { 
+				throw new Exception ($"Cant get \"{typeof (T).Name}\" component - not attached."); 
+			}
 #endif
 			return ref _denseItems[_sparseItems[entity]];
 		}
