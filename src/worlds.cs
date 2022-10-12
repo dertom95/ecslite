@@ -4,7 +4,7 @@
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
 
-//#define USE_FIXED_ARRAYS
+//#define USE_FIXED_ARRAYS 
 
 using System;
 using System.Collections.Generic;
@@ -606,9 +606,11 @@ namespace Leopotam.EcsLite {
 			if (entity < 0 || entity >= _entitiesCount) { throw new Exception("Cant touch destroyed entity."); }
 #endif
 			ref var entityData = ref Entities[entity];
+#if EZ_SANITY_CHECK
 			if (entityData.Destroyed) {
-				return;
+				throw new Exception("Tried to destroy already destroyed entity");
 			}
+#endif
 			// kill components.
 			if (entityData.HasComponents) {
 				if (entityChangeCallback != null) {
@@ -632,6 +634,7 @@ namespace Leopotam.EcsLite {
 				return;
 			}
 
+			ClearEntityStateMask(entity);
 			//entityData.Gen = (uint)(entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1)); // no need to check for end of short. This is done on Gen-Property 
 			// entityData.Gen = (uint)(-(entityData.Gen + 1));
 			entityData.Destroy();
