@@ -91,7 +91,8 @@ namespace Leopotam.EcsLite {
 		protected TaggedFilter[] _filtersByTagMask;
 		protected Mask[] _masks;
 		protected int _masksCount;
-
+		private Action<EcsWorld,bool, int, int> componentChangeCallback;
+		private Action<EcsWorld,bool,bool, int> entityChangeCallback;
 		protected bool _destroyed;
 #if LEOECSLITE_WORLD_EVENTS
 		protected List<IEcsWorldEventListener> _eventListeners;
@@ -197,6 +198,15 @@ namespace Leopotam.EcsLite {
 		}
 
 		/// <summary>
+		/// Callbacks to be informed if components or entities are created/deleted 
+		/// </summary>
+		/// <param name="componentChangeCallback"></param>
+		public void SetChangeCallbacks(Action<EcsWorld,bool,bool, int> entityChangeCallback, Action<EcsWorld,bool,int,int> componentChangeCallback) {
+			this.componentChangeCallback = componentChangeCallback;
+			this.entityChangeCallback = entityChangeCallback;
+		}
+
+		/// <summary>
 		/// Let the filterdata be updated to new memory addresses on next enumator-interation
 		/// </summary>
 		public void _MarkFiltersDirty() {
@@ -272,6 +282,9 @@ namespace Leopotam.EcsLite {
 #if ECS_INT_PACKED
 			entity = PackEntity(entity, (int)gen);
 #endif
+			if (entityChangeCallback != null) {
+				entityChangeCallback(this,false,true, entity); // tell callback this entity is being created
+			}
 			return entity;
 		}
 
@@ -598,6 +611,9 @@ namespace Leopotam.EcsLite {
 			}
 			// kill components.
 			if (entityData.HasComponents) {
+				if (entityChangeCallback != null) {
+					entityChangeCallback(this,true,false, entity); // tell callback this entity is going to be destroyed 
+				}
 				var idx = 0;
 				while (entityData.HasComponents && idx < _poolsCount) {
 					for (; idx < _poolsCount; idx++) {
@@ -629,6 +645,9 @@ namespace Leopotam.EcsLite {
 				_eventListeners[ii].OnEntityDestroyed (entity);
 			}
 #endif
+			if (entityChangeCallback != null) {
+				entityChangeCallback(this,false, false, entity); // tell callback this entity is destroyed for good
+			}
 		}
 
 		//		[MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -959,6 +978,9 @@ namespace Leopotam.EcsLite {
 						}
 					}
 				}
+			}
+			if (componentChangeCallback != null) {
+				componentChangeCallback(this,added, entity, componentType);
 			}
 		}
 

@@ -61,8 +61,9 @@ namespace Leopotam.EcsLite {
 			_type = typeof (T);
 			_world = world;
 			_id = id;
-			_bitmaskFieldId = id / 64;
-			_componentBitmask = (uint)1 << (id % 64);
+			// calculate bitwise representation of this component for its world
+			(_bitmaskFieldId, _componentBitmask) = ComponentID2BitmaskInfo(id);
+
 			_denseItems = new T[denseCapacity + 1];
 			_sparseItems = new int[sparseCapacity];
 			_denseItemsCount = 1;
@@ -91,6 +92,12 @@ namespace Leopotam.EcsLite {
 #endif
 					autoResetMethod);
 			}
+		}
+
+		public static (int,uint) ComponentID2BitmaskInfo(int componentId) {
+			int _bitmaskFieldId = componentId / 64;
+			uint _componentBitmask = (uint)1 << (componentId % 64);
+			return (_bitmaskFieldId, _componentBitmask);
 		}
 
 #if UNITY_2020_3_OR_NEWER
