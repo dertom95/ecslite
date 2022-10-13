@@ -380,6 +380,32 @@ namespace Leopotam.EcsLite {
 			return Entities[rawEntity].tagBitMask;
 		}
 
+
+		/// <summary>
+		/// Check if entity has the specific tag-bitmask set (all bits needs to be set)
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="bitmask"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasTagAll(int packedEntity, UInt32 bitmask) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			return (Entities[rawEntity].tagBitMask & bitmask)==bitmask;
+		}
+
+		/// <summary>
+		/// Check if entity at least one bit of the specific tag-bitmask set
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <param name="bitmask"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasTagSome(int packedEntity, UInt32 bitmask) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			return (Entities[rawEntity].tagBitMask & bitmask) > 0;
+		}
+
+
 		/// <summary>
 		/// Set specified mask as is. Only keep the entityType
 		/// </summary>

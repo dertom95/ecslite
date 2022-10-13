@@ -21,6 +21,12 @@ namespace Leopotam.EcsLite {
 		void SetRaw (int entity, object dataRaw);
 		int GetId ();
 		Type GetComponentType ();
+
+		public static (int, uint) ComponentID2BitmaskInfo(int componentId) {
+			int _bitmaskFieldId = componentId / 64;
+			uint _componentBitmask = (uint)1 << (componentId % 64);
+			return (_bitmaskFieldId, _componentBitmask);
+		}
 	}
 
 	public interface IEcsAutoReset<T> where T : struct {
@@ -62,7 +68,7 @@ namespace Leopotam.EcsLite {
 			_world = world;
 			_id = id;
 			// calculate bitwise representation of this component for its world
-			(_bitmaskFieldId, _componentBitmask) = ComponentID2BitmaskInfo(id);
+			(_bitmaskFieldId, _componentBitmask) = IEcsPool.ComponentID2BitmaskInfo(id);
 
 			_denseItems = new T[denseCapacity + 1];
 			_sparseItems = new int[sparseCapacity];
@@ -94,11 +100,7 @@ namespace Leopotam.EcsLite {
 			}
 		}
 
-		public static (int,uint) ComponentID2BitmaskInfo(int componentId) {
-			int _bitmaskFieldId = componentId / 64;
-			uint _componentBitmask = (uint)1 << (componentId % 64);
-			return (_bitmaskFieldId, _componentBitmask);
-		}
+
 
 #if UNITY_2020_3_OR_NEWER
 		[UnityEngine.Scripting.Preserve]
