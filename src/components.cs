@@ -195,9 +195,9 @@ namespace Leopotam.EcsLite {
 			_sparseItems[entity] = idx;
 			ref EcsWorld.EntityData entityData = ref _world.Entities[entity];
 
-			entityData.SetComponentBit(_bitmaskFieldId, _componentBitmask);
+			var oldMask = entityData.SetComponentBit(_bitmaskFieldId, _componentBitmask);
 
-			_world.OnEntityChangeInternal(entity, _id, true);
+			_world.OnEntityChangeInternal(entity, _id, ref oldMask, true);
 #if LEOECSLITE_WORLD_EVENTS
 #if ECS_INT_PACKED
 			_world.RaiseEntityChangeEvent(packedEntity);
@@ -250,10 +250,11 @@ namespace Leopotam.EcsLite {
 			if (sparseData > 0) {
 
 				ref var entityData = ref _world.Entities[entity];
-				entityData.UnsetComponentBit(_bitmaskFieldId,_componentBitmask);
+				
+				var oldMask = entityData.UnsetComponentBit(_bitmaskFieldId,_componentBitmask);
 				
 
-				_world.OnEntityChangeInternal (entity, _id, false);
+				_world.OnEntityChangeInternal (entity, _id, ref oldMask, false);
 				if (_recycledItemsCount == _recycledItems.Length) {
 					Array.Resize (ref _recycledItems, _recycledItemsCount << 1);
 				}

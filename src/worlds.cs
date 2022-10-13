@@ -247,7 +247,7 @@ namespace Leopotam.EcsLite {
 				entityData.ReactiveDestroyed();
 				gen = entityData.Gen;
 				// set the entityType as initial bitmask, only having the entityType and no tags attached
-				entityData.tagBitMask = entityType;
+				entityData.bitmask.tagBitMask = entityType;
 			} else {
 				// new entity.
 				if (_entitiesCount == Entities.Length) {
@@ -269,7 +269,7 @@ namespace Leopotam.EcsLite {
 				entity = _entitiesCount++;
 				gen = 0; // we start with generation 0
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
-				Entities[entity].tagBitMask = entityType;
+				Entities[entity].bitmask.tagBitMask = entityType;
 			}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			_leakedEntities.Add(entity);
@@ -298,7 +298,7 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint newMask = Entities[rawEntity].tagBitMask;
+			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask &= TAGFILTERMASK_ENTITY_TYPE;
 			OnEntityTagChangeInternal(packedEntity, newMask);
 
@@ -320,7 +320,7 @@ namespace Leopotam.EcsLite {
 #endif
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
-			uint newMask = Entities[rawEntity].tagBitMask;
+			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, newMask);
@@ -377,7 +377,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public UInt32 GetTagMask(int packedEntity) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
-			return Entities[rawEntity].tagBitMask;
+			return Entities[rawEntity].bitmask.tagBitMask;
 		}
 
 
@@ -390,7 +390,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool HasTagAll(int packedEntity, UInt32 bitmask) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
-			return (Entities[rawEntity].tagBitMask & bitmask)==bitmask;
+			return (Entities[rawEntity].bitmask.tagBitMask & bitmask)==bitmask;
 		}
 
 		/// <summary>
@@ -402,7 +402,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool HasTagSome(int packedEntity, UInt32 bitmask) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
-			return (Entities[rawEntity].tagBitMask & bitmask) > 0;
+			return (Entities[rawEntity].bitmask.tagBitMask & bitmask) > 0;
 		}
 
 
@@ -424,7 +424,7 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// use a clean-mask with only the entityType set
-			uint mask = Entities[rawEntity].tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
+			uint mask = Entities[rawEntity].bitmask.tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
 			mask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, mask);
@@ -446,7 +446,7 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint newMaks = Entities[rawEntity].tagBitMask;
+			uint newMaks = Entities[rawEntity].bitmask.tagBitMask;
 			newMaks &= ~unsetMask;
 			OnEntityTagChangeInternal(packedEntity, newMaks);
 		}
@@ -882,7 +882,7 @@ namespace Leopotam.EcsLite {
 			// scan exist entities for compatibility with new filter.
 			for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
 				ref var entityData = ref Entities[i];
-				if (entityData.HasComponents && IsMaskCompatible(ref mask.bitmaskData, i, entityData.tagBitMask)) {
+				if (entityData.HasComponents && IsMaskCompatible(ref mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
 					filter.AddEntity(i);
 				}
 			}
@@ -907,7 +907,7 @@ namespace Leopotam.EcsLite {
 		private void OnEntityTagChangeInternal(int entity, UInt32 newMask) {
 
 			ref EntityData entityData = ref Entities[entity];
-			UInt32 oldBitmask = entityData.tagBitMask;
+			UInt32 oldBitmask = entityData.bitmask.tagBitMask;
 			if (oldBitmask == newMask) {
 				// nothing to change
 				return;
@@ -920,7 +920,7 @@ namespace Leopotam.EcsLite {
 			for (int i = 0; i < taggedFilterAmount; i++) {
 				ref TaggedFilter filterData = ref _filtersByTagMask[i];
 
-				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, entity, oldBitmask);
+				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, ref entityData.bitmask, oldBitmask);
 				if (maskCompatible) {
 					// this entity is in this filter!
 					// what we know:
@@ -937,7 +937,7 @@ namespace Leopotam.EcsLite {
 				} else {
 					// this entity is not (yet) in this filter
 					// check if the new mask would apply
-					bool newMaskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, entity, newMask);
+					bool newMaskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, ref entityData.bitmask, newMask);
 					if (newMaskCompatible) {
 						addToFilter.Add(filterData.filter);
 					}
@@ -949,7 +949,7 @@ namespace Leopotam.EcsLite {
 				removeFromFilter[i].RemoveEntity(entity);
 			}
 			// change entity to new tagMask
-			entityData.tagBitMask = newMask;
+			entityData.bitmask.tagBitMask = newMask;
 			// now add
 			for (int i = 0, iEnd = addToFilter.Count; i < iEnd; i++) {
 				addToFilter[i].AddEntity(entity);
@@ -957,19 +957,22 @@ namespace Leopotam.EcsLite {
 		}
 
 		/// <summary>
-		/// Needs to be called with unpacked entity 
+		/// CAUTIONS: Needs to be called with unpacked entity !
 		/// </summary>
-		public void OnEntityChangeInternal(int entity, int componentType, bool added) {
+		public void OnEntityChangeInternal(int entity, int componentType, ref EntityData.EntityDataBitmask oldBitmask, bool added) {
 			var includeList = _filtersByIncludedComponents[componentType];
 			var excludeList = _filtersByExcludedComponents[componentType];
 
 			if (added) {
-				// add component.
+				ref var entityData = ref Entities[entity];
+					// add component.
 				if (includeList != null) {
 					foreach (var filter in includeList) {
-						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, entity, Entities[entity].tagBitMask)) {
+						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] > 0) { throw new Exception("Entity already in filter."); }
+							if (filter.SparseEntities[entity] > 0) { 
+								throw new Exception("Entity already in filter."); 
+							}
 #endif
 							filter.AddEntity(entity);
 						}
@@ -977,19 +980,29 @@ namespace Leopotam.EcsLite {
 				}
 				if (excludeList != null) {
 					foreach (var filter in excludeList) {
-						if (!IsMaskCompatible(ref filter.GetMask().bitmaskData, entity, Entities[entity].tagBitMask)) {
+						// check if the entity was in the specific before
+						bool isInFilter = filter.SparseEntities[entity] != 0;
+						//bool wasInFilter = IsMaskCompatible(ref filter.GetMask().bitmaskData, ref oldBitmask, oldBitmask.tagBitMask);
+						// then check if the filter is not compatible anymore => remove // TODO: optimization?
+						if (isInFilter && !IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] == 0) { throw new Exception("Entity not in filter."); }
+							if (filter.SparseEntities[entity] == 0) { 
+								throw new Exception("Entity not in filter."); 
+							}
 #endif
 							filter.RemoveEntity(entity);
 						}
 					}
 				}
 			} else {
+				ref var entityData = ref Entities[entity];
+
 				// remove component.
 				if (includeList != null) {
 					foreach (var filter in includeList) {
-						if (!IsMaskCompatible(ref filter.GetMask().bitmaskData, entity, Entities[entity].tagBitMask)) {
+						bool isInFilter = filter.SparseEntities[entity]!=0;
+						//bool wasInFilter = IsMaskCompatible(ref filter.GetMask().bitmaskData, ref oldBitmask, oldBitmask.tagBitMask);
+						if (isInFilter && !IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, Entities[entity].bitmask.tagBitMask)) {
 							if (filter.SparseEntities[entity] == 0) {
 								continue;
 							}
@@ -999,7 +1012,7 @@ namespace Leopotam.EcsLite {
 				}
 				if (excludeList != null) {
 					foreach (var filter in excludeList) {
-						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, entity, Entities[entity].tagBitMask)) {
+						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, Entities[entity].bitmask.tagBitMask)) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 							if (filter.SparseEntities[entity] > 0) { throw new Exception("Entity already in filter."); }
 #endif
@@ -1023,9 +1036,12 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, int entity, uint entityTagBitMask) {
-			ref EntityData entityData = ref Entities[entity];
+		bool IsMaskCompatibleWithoutComponent(ref Mask.BitMaskData filterBitmaskData, int entity, uint entityTagBitMask, int withoutCom) {
+			return false;
+		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
 			bool includeComponentsApplies;
 			bool excludeComponentsApplies;
 
@@ -1041,11 +1057,11 @@ namespace Leopotam.EcsLite {
 
 				// remark: componentMasks: 0+1=includeComponentMasks 2+3=excludeComponentMasks
 
-				includeComponentsApplies = (entityData.componentsBitMask[0] & filterBitmaskData.componentMasks[0]) == filterBitmaskData.componentMasks[0]
-								&& (entityData.componentsBitMask[1] & filterBitmaskData.componentMasks[1]) == filterBitmaskData.componentMasks[1];
+				includeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[0]) == filterBitmaskData.componentMasks[0]
+								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[1]) == filterBitmaskData.componentMasks[1];
 
-				excludeComponentsApplies = (entityData.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
-								&& (entityData.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
+				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
+								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
 
 				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
@@ -1240,7 +1256,33 @@ namespace Leopotam.EcsLite {
 		}
 
 
+
+
 		public unsafe struct EntityData {
+			public unsafe struct EntityDataBitmask {
+				/// <summary>
+				/// Bitmask representing somekind of state of that entity. DO NOT SET VALUE DIRECTLY!!  THE EcsWorld needs to know if data changed here!!! As long as you know what you are doing....don't do it!
+				/// Use .... not sure what, yet.  
+				/// </summary>
+				// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
+				// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
+				// bit 10-32 custom-tags (entity-type specific tags)
+				public UInt32 tagBitMask;
+
+				/// <summary>
+				/// Two 64bit longs to check for 128 components set to this entity
+				/// </summary>
+				[UnityEngine.Tooltip("Two 64bit longs to check for 128 components set to this entity")]
+
+#if !USE_FIXED_ARRAYS
+				public UInt64[] componentsBitMask;
+#else
+			[MarshalAs(UnmanagedType.ByValArray/*, SizeConst = 123*/)]
+			public fixed UInt64 componentsBitMask[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+#endif
+			}
+
+
 			public const uint MASK_GEN = 0b0000000000000000000000001111;
 			public const uint MASK_HAS_COMPONENTS = 0b0000000000000000000000010000;
 			public const uint MASK_DESTROYED = 0b0000000000000000000000100000;
@@ -1249,26 +1291,7 @@ namespace Leopotam.EcsLite {
 			// bit 06-32 unused
 			public UInt32 entityInfo;
 
-			/// <summary>
-			/// Bitmask representing somekind of state of that entity. DO NOT SET VALUE DIRECTLY!!  THE EcsWorld needs to know if data changed here!!! As long as you know what you are doing....don't do it!
-			/// Use .... not sure what, yet.  
-			/// </summary>
-			// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
-			// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
-			// bit 10-32 custom-tags (entity-type specific tags)
-			public UInt32 tagBitMask;
-
-			/// <summary>
-			/// Two 64bit longs to check for 128 components set to this entity
-			/// </summary>
-			[UnityEngine.Tooltip("Two 64bit longs to check for 128 components set to this entity")]
-
-#if !USE_FIXED_ARRAYS
-			public UInt64[] componentsBitMask;
-#else
-			[MarshalAs(UnmanagedType.ByValArray/*, SizeConst = 123*/)]
-			public fixed UInt64 componentsBitMask[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
-#endif
+			public unsafe EntityDataBitmask bitmask;
 
 
 			public void Destroy() {
@@ -1308,22 +1331,22 @@ namespace Leopotam.EcsLite {
 			/// TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask
 			/// </summary>
 			[UnityEngine.Tooltip("TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask")]
-			public UInt32 TagMaskFilterKey => (tagBitMask << 32) + (~tagBitMask);
+			public UInt32 TagMaskFilterKey => (bitmask.tagBitMask << 32) + (~bitmask.tagBitMask);
 
 			/// <summary>
 			/// Get entity-type (stored in the tagBitMask)
 			/// </summary>
 			[UnityEngine.Tooltip("Get entity-type (stored in the tagBitMask)")]
-			public uint EntityType => tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
+			public uint EntityType => bitmask.tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
 
 			public void _UpdateHasComponents() {
 #if !USE_FIXED_ARRAYS
-				if (componentsBitMask == null) {
-					componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+				if (bitmask.componentsBitMask == null) {
+					bitmask.componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
 				}
 #endif
 				for (int i = 0; i < EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS; i++) {
-					if (componentsBitMask[i] > 0) {
+					if (bitmask.componentsBitMask[i] > 0) {
 						entityInfo |= MASK_HAS_COMPONENTS;
 						return;
 					}
@@ -1332,36 +1355,52 @@ namespace Leopotam.EcsLite {
 			}
 
 
+			/// <summary>
+			/// Set specific bitmask (| bitwise) returns the old mask
+			/// </summary>
+			/// <param name="componentBitmaskId"></param>
+			/// <param name="setMask"></param>
+			/// <returns></returns>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void SetComponentBit(int componentBitmaskId, uint setMask) {
+			public EntityDataBitmask SetComponentBit(int componentBitmaskId, uint setMask) {
 #if !USE_FIXED_ARRAYS
-				if (componentsBitMask == null) {
-					componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+				if (bitmask.componentsBitMask == null) {
+					bitmask.componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
 				}
 #endif
-				componentsBitMask[componentBitmaskId] |= setMask;
+				bitmask.componentsBitMask[componentBitmaskId] |= setMask;
 				_UpdateHasComponents();
+				return bitmask;
+			}
+
+			
+			/// <summary>
+			/// Unset specific bitmask. Returns the old mask
+			/// </summary>
+			/// <param name="componentBitmaskId"></param>
+			/// <param name="unsetMask"></param>
+			/// <returns></returns>
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			public EntityDataBitmask UnsetComponentBit(int componentBitmaskId, uint unsetMask) {
+				EntityDataBitmask oldMask = bitmask;
+#if !USE_FIXED_ARRAYS
+				if (bitmask.componentsBitMask == null) {
+					bitmask.componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+				}
+#endif
+				bitmask.componentsBitMask[componentBitmaskId] &= ~unsetMask;
+				_UpdateHasComponents();
+				return bitmask;
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void UnsetComponentBit(int componentBitmaskId, uint unsetMask) {
-#if !USE_FIXED_ARRAYS
-				if (componentsBitMask == null) {
-					componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
-				}
-#endif
-				componentsBitMask[componentBitmaskId] &= ~unsetMask;
-				_UpdateHasComponents();
-			}
-
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public bool CheckSingleComponent(int bitmaskIdx, uint bitmask) {
-				return (componentsBitMask[bitmaskIdx] & bitmask) == bitmask;
+			public bool CheckSingleComponent(int componentBitmaskIdx, UInt64 componentBitMask) {
+				return ( bitmask.componentsBitMask[componentBitmaskIdx] & componentBitMask) == componentBitMask;
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public bool HasTagMask(uint tagmask) {
-				return (tagBitMask & tagmask) == tagmask;
+				return (bitmask.tagBitMask & tagmask) == tagmask;
 			}
 
 
