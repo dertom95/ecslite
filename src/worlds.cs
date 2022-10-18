@@ -4,7 +4,7 @@
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
 
-//#define USE_FIXED_ARRAYS 
+#define USE_FIXED_ARRAYS 
 
 using System;
 using System.Collections.Generic;
