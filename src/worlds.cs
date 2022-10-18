@@ -437,7 +437,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="unsetMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]/// 
-		private void UnsetTagMask(int packedEntity, UInt32 unsetMask) {
+		public void _UnsetTagMask(int packedEntity, UInt32 unsetMask) {
 #if EZ_SANITY_CHECK
 			if ((unsetMask & TAGFILTERMASK_ENTITY_TYPE) > 0) {
 				throw new Exception($"SetMask[entity:{packedEntity} mask:{unsetMask}]: Tried to set illegal setMask: mask would change entity-type!");
@@ -462,7 +462,7 @@ namespace Leopotam.EcsLite {
 
 			// TODO: write optimizied code to only check filters that have this tag involved
 			// for now using multicheck. 
-			UnsetTagMask(packedEntity, tag1);
+			_UnsetTagMask(packedEntity, tag1);
 		}
 
 		/// <summary>
@@ -476,7 +476,7 @@ namespace Leopotam.EcsLite {
 
 			// TODO: write optimizied code to only check filters that have this tag involved
 			// for now using multicheck. 
-			UnsetTagMask(packedEntity, tag1 | tag2);
+			_UnsetTagMask(packedEntity, tag1 | tag2);
 		}
 
 
@@ -493,7 +493,7 @@ namespace Leopotam.EcsLite {
 
 			// TODO: write optimizied code to only check filters that have this tag involved
 			// for now using multicheck. 
-			UnsetTagMask(packedEntity, tag1 | tag2 | tag3);
+			_UnsetTagMask(packedEntity, tag1 | tag2 | tag3);
 		}
 
 
