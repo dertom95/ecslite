@@ -135,7 +135,7 @@ namespace Leopotam.EcsLite {
             return this;
         }
 
-        public void Init () {
+        public EcsSystems Init () {
             if (_runSystemsCount > 0) {
                 _runSystems = new IEcsRunSystem[_runSystemsCount];
             }
@@ -161,6 +161,7 @@ namespace Leopotam.EcsLite {
                     _runSystems[runIdx++] = runSystem;
                 }
             }
+			return this;
         }
 
         public void Run (float dt=0) {
