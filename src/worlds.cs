@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
+using UnityEngine.Assertions;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -46,15 +47,21 @@ namespace Leopotam.EcsLite {
 
 		public static EcsWorld[] worlds = new EcsWorld[MAX_WORLDS];
 
+		
+		/// <summary>
+		/// Clear ECSWorlds! NEVER USE THIS! This is only useful for the TestRunner to clear worlds that were not removed
+		/// </summary>
+		public static void __ClearECSWorlds() {
+			worlds = new EcsWorld[MAX_WORLDS];
+		}
+
 		/// <summary>
 		/// Register this world with its specific idx
 		/// </summary>
 		/// <param name="idx"></param>
 		/// <param name="world"></param>
 		protected static void RegisterWorlds(int idx, EcsWorld world) {
-			if (idx >= MAX_WORLDS) {
-				throw new Exception($"You added more worlds than supported({MAX_WORLDS})");
-			}
+			Assert.IsTrue(idx < MAX_WORLDS, $"You added more worlds than supported({MAX_WORLDS})");
 			worlds[idx] = world;
 		}
 
@@ -849,7 +856,7 @@ namespace Leopotam.EcsLite {
 			_allFilters.Add(filter);
 
 			// add filter to tagMask-lookup
-			UInt32 tagmaskHash = mask.TagMaskHash;
+			UInt64 tagmaskHash = mask.TagMaskHash;
 			if (tagmaskHash != 0) {
 				_filtersByTagMask[taggedFilterAmount] = new TaggedFilter() {
 					filterBitMaskData = mask.bitmaskData,
@@ -1153,7 +1160,7 @@ namespace Leopotam.EcsLite {
 #endif
 			}
 
-			public UInt32 TagMaskHash => (bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet;
+			public UInt64 TagMaskHash => (bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet;
 
 			/// <summary>
 			/// Tag-bits that needs to be set to be a valid filter 
