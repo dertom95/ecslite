@@ -179,7 +179,17 @@ namespace Leopotam.EcsLite {
 			_destroyed = false;
 		}
 
+		public static int FindFreeWorldSlot() {
+			for (int i = 0; i < EcsWorld.MAX_WORLDS; i++) {
+				if (EcsWorld.worlds[i] == null) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
 		public void Destroy() {
+			Assert.IsTrue(IsAlive(), "Tried to destroy an already destroyed ecsworld");
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (CheckForLeakedEntities()) { throw new Exception($"Empty entity detected before EcsWorld.Destroy()."); }
 #endif
@@ -238,14 +248,12 @@ namespace Leopotam.EcsLite {
 		}
 
 		public int NewEntity(uint entityType = 0) {
-#if EZ_SANITY_CHECK
 			// check if entityType is valid. if the entityType exceeds the possible range it would automatically
 			// set tag-switches which should not be done.
 			// At least not for now. It might have a usecase :thinking: 
-			if ((entityType & ~TAGFILTERMASK_ENTITY_TYPE) > 0) {
-				throw new Exception($"NewEntity: entityTypeId out of range! You are only allowed to use values from 0 to {TAGFILTERMASK_ENTITY_TYPE}");
-			}
-#endif
+			Assert.IsFalse((entityType & ~TAGFILTERMASK_ENTITY_TYPE) > 0,$"NewEntity: entityTypeId out of range! You are only allowed to use values from 0 to {TAGFILTERMASK_ENTITY_TYPE}");
+			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
+
 			int entity;
 			uint gen = 0;
 			if (_recycledEntitiesCount > 0) {
@@ -600,6 +608,11 @@ namespace Leopotam.EcsLite {
 			return world;
 		}
 
+		[System.Diagnostics.Conditional("DEBUG")]
+		public static void AssertIsEntityValid(int entity) {
+			// this call will do all the checks needed
+			GetPackedWorld(entity);
+		}
 
 		/// <summary>
 		/// Get packed world as base-class EcsWorld
@@ -610,6 +623,8 @@ namespace Leopotam.EcsLite {
 		public static ref EcsWorld GetPackedWorld(int packedEntity) {
 			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
 			ref EcsWorld world = ref worlds[worldId];
+			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
+
 #if EZ_SANITY_CHECK
 			// check if generation of the packed entity fit with the generation of this entity in the ecs.
 			// If there is a mismatch this means that we stored a destroyed entity somewhere!
