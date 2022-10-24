@@ -1,4 +1,4 @@
-﻿// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -85,7 +85,12 @@ namespace Leopotam.EcsLite {
 		}
 
 		public int worldBitmask;
-		public int worldIdx;
+		public int WorldArrayIdx => _worldIdx - 1;
+		/// <summary>
+		/// dont use! Use Property WorldIdx
+		/// </summary>
+		[UnityEngine.Tooltip("dont use! Use Property WorldIdx")]
+		public int _worldIdx;
 
 
 #endif
@@ -152,9 +157,9 @@ namespace Leopotam.EcsLite {
 #endif
 
 #if ECS_INT_PACKED
-		public EcsWorld(int _worldIdx, in Config cfg = default) {
-			RegisterWorlds(_worldIdx, this);
-			worldIdx = _worldIdx;
+		public EcsWorld(int worldIdx, in Config cfg = default) {
+			RegisterWorlds(worldIdx, this);
+			this._worldIdx = worldIdx+1;
 			worldBitmask = _worldIdx << ENTITYID_SHIFT_WORLD;
 #else
 		public EcsWorld (in Config cfg = default) {
@@ -221,7 +226,7 @@ namespace Leopotam.EcsLite {
 				_eventListeners[ii].OnWorldDestroyed (this);
 			}
 #endif
-			worlds[worldIdx] = null;
+			worlds[WorldArrayIdx] = null;
 		}
 
 		/// <summary>
@@ -360,6 +365,10 @@ namespace Leopotam.EcsLite {
 
 		public bool IsTagAllowedForEntity(int entity,UInt32 tag) {
 			UInt32 tagEntityType = (tag & MASK_TAG_ENTITY_TYPE);
+			if (tagEntityType == 0) {
+				// globalflag == allowed
+				return true;
+			}
 			UInt32 entityEntityType = GetEntityType(entity);
 			return tagEntityType == entityEntityType;
 		}
@@ -559,6 +568,16 @@ namespace Leopotam.EcsLite {
 			return packedEntity;
 		}
 
+		/// <summary>
+		/// Check if an entity is packed!
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <returns></returns>
+		public static bool IsPacked(int entity) {
+			int worldIdx = GetPackedWorldID(entity);
+			return worldIdx != 0;
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int PackEntity(int plainEntity, int gen) {
 			gen = gen << ENTITYID_SHIFT_GEN;
@@ -573,9 +592,11 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static (int, int, uint) UnpackEntity(int packedEntity) {
+			Assert.IsTrue(IsPacked(packedEntity), "UnpackEntity needs packed entities");
+
 			// due to better inlining, dont using the specialized methods here. 
 			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
-			int worldID = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			int worldID = ((packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD) - 1;
 			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
 #if EZ_SANITY_CHECK
 			// check if generation of the packed entity fit with the generation of this entity in the ecs.
@@ -595,6 +616,8 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static (int, T, uint) UnpackEntityWithWorld<T>(int packedEntity) where T : EcsWorld {
+			Assert.IsTrue(IsPacked(packedEntity), "UnpackEntityWithWorld needs packed entities");
+
 			// due to better inlining, dont using the specialized methods here. 
 			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
 			int worldID = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
@@ -620,6 +643,8 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint GetPackedGen(int packedEntity) {
+			Assert.IsTrue(IsPacked(packedEntity), "GetPackedGen needs packed entities");
+
 			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
 			return gen;
 		}
@@ -654,8 +679,10 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T GetPackedWorld<T>(int packedEntity) where T : EcsWorld {
-			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			Assert.IsTrue(IsPacked(packedEntity), "GetPackedWorld needs packed entities");
+			int worldId = ((packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD) - 1;
 			T world = UnsafeUtility.As<EcsWorld, T>(ref worlds[worldId]);
+			Assert.IsNotNull(world,$"world with idx:{worldId} is null!");
 #if EZ_SANITY_CHECK
 			// check if generation of the packed entity fit with the generation of this entity in the ecs.
 			// If there is a mismatch this means that we stored a destroyed entity somewhere!
@@ -670,9 +697,14 @@ namespace Leopotam.EcsLite {
 		}
 
 		[System.Diagnostics.Conditional("DEBUG")]
-		public static void AssertIsEntityValid(int entity) {
-			// this call will do all the checks needed
-			GetPackedWorld(entity);
+		public static void AssertIsEntityValid(int entity,EcsWorld world=null) {
+			if (EcsWorld.IsPacked(entity)) {
+				// this call will do all the checks needed
+				EcsWorld packedWorld = GetPackedWorld(entity);
+				if (world != null) {
+					Assert.AreEqual(packedWorld, world);
+				}
+			}
 		}
 
 		/// <summary>
@@ -683,7 +715,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref EcsWorld GetPackedWorld(int packedEntity) {
 			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
-			ref EcsWorld world = ref worlds[worldId];
+			ref EcsWorld world = ref worlds[worldId-1];
 			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
 
 #if EZ_SANITY_CHECK
@@ -992,9 +1024,9 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="entity"></param>
 		/// <param name="newMask"></param>
-		private void OnEntityTagChangeInternal(int entity, UInt32 newMask) {
-
-			ref EntityData entityData = ref Entities[entity];
+		private void OnEntityTagChangeInternal(int packedEntity, UInt32 newMask) {
+			int rawEntity = EcsWorld.GetPackedRawEntityId(packedEntity);
+			ref EntityData entityData = ref Entities[rawEntity];
 			UInt32 oldBitmask = entityData.bitmask.tagBitMask;
 			if (oldBitmask == newMask) {
 				// nothing to change
@@ -1034,13 +1066,13 @@ namespace Leopotam.EcsLite {
 
 			// now execute removals
 			for (int i = 0, iEnd = removeFromFilter.Count; i < iEnd; i++) {
-				removeFromFilter[i].RemoveEntity(entity);
+				removeFromFilter[i].RemoveEntity(rawEntity);
 			}
 			// change entity to new tagMask
 			entityData.bitmask.tagBitMask = newMask;
 			// now add
 			for (int i = 0, iEnd = addToFilter.Count; i < iEnd; i++) {
-				addToFilter[i].AddEntity(entity);
+				addToFilter[i].AddEntity(rawEntity);
 			}
 		}
 
