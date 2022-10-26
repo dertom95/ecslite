@@ -1,4 +1,4 @@
-// ----------------------------------------------------------------------------
+﻿// ----------------------------------------------------------------------------
 // The MIT License
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
@@ -461,8 +461,14 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool HasTagSome(int packedEntity, UInt32 bitmask) {
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, bitmask), "Tag(s) not compatible to EntityType");
+
 			int rawEntity = GetPackedRawEntityId(packedEntity);
-			return (Entities[rawEntity].bitmask.tagBitMask & bitmask) > 0;
+
+			// use a clean-mask with only the entityType set
+			uint mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
+			
+			return (mask & bitmask) > 0;
 		}
 
 
@@ -478,7 +484,7 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// use a clean-mask with only the entityType set
-			uint mask = Entities[rawEntity].bitmask.tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
+			uint mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
 			mask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, mask);
@@ -497,9 +503,9 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint newMaks = Entities[rawEntity].bitmask.tagBitMask;
-			newMaks &= ~unsetMask;
-			OnEntityTagChangeInternal(packedEntity, newMaks);
+			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
+			newMask &= ~(unsetMask & ~TAGFILTERMASK_ENTITY_TYPE);
+			OnEntityTagChangeInternal(packedEntity, newMask);
 		}
 
 		/// <summary>
@@ -952,7 +958,8 @@ namespace Leopotam.EcsLite {
 		/// Needs to be called with unpacked entity 
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool IsEntityAliveInternal(int entity) {
+		public bool IsEntityAliveInternal(int packedEntity) {
+			int entity = GetPackedRawEntityId(packedEntity);
 			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 		}
 
