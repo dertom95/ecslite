@@ -1183,7 +1183,11 @@ namespace Leopotam.EcsLite {
 			bool tagSetApplies;
 			bool tagUnsetApplies;
 			tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
-			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entityTagMask & filterBitmaskData.tagMaskNotSet) != 0;
+//			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entitTagMask & filterBitmaskData.tagMaskNotSet) != 0;
+			
+			// if not NOT-Mask is set at all we are fine
+			// otherwise: &-check the notsetmask (without entityType) with the currentTagMask. if there is any result > 0 there was at least one notsetmask-bit set => fail
+			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask & EcsWorld.MASK_TAG_ENTITY_TYPE_INV) & (filterBitmaskData.tagMaskNotSet)) == 0;
 			return tagSetApplies && tagUnsetApplies;
 		}
 

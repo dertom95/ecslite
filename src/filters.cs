@@ -168,8 +168,8 @@ namespace Leopotam.EcsLite {
             int packedEntity = _world.PackEntity(entity);
             int densePosition = _entitiesCount;
             _denseEntities[densePosition] = packedEntity;
-            if (_filterData != null) {
-                UnityEngine.Debug.Log($"{entity} Count:" + _entitiesCount);
+			//UnityEngine.Debug.Log($"{entity} Count:" + _entitiesCount);
+			if (_filterData != null) {
                 _filterData[densePosition].PackedEntity = packedEntity;
                 _filterData[densePosition].SetData();
             }
