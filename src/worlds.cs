@@ -115,6 +115,8 @@ namespace Leopotam.EcsLite {
 		protected int _masksCount;
 		private Action<EcsWorld,bool, int, int> componentChangeCallback;
 		private Action<EcsWorld,bool,bool, int> entityChangeCallback;
+		private Action<EcsWorld, int, bool, UInt32> tagChangeCallback;
+
 		protected bool _destroyed;
 #if LEOECSLITE_WORLD_EVENTS
 		protected List<IEcsWorldEventListener> _eventListeners;
@@ -233,9 +235,10 @@ namespace Leopotam.EcsLite {
 		/// Callbacks to be informed if components or entities are created/deleted 
 		/// </summary>
 		/// <param name="componentChangeCallback"></param>
-		public void SetChangeCallbacks(Action<EcsWorld,bool,bool, int> entityChangeCallback, Action<EcsWorld,bool,int,int> componentChangeCallback) {
+		public void SetChangeCallbacks(Action<EcsWorld,bool,bool, int> entityChangeCallback, Action<EcsWorld,bool,int,int> componentChangeCallback, Action<EcsWorld, int, bool, UInt32> tagChangeCallback) {
 			this.componentChangeCallback = componentChangeCallback;
 			this.entityChangeCallback = entityChangeCallback;
+			this.tagChangeCallback = tagChangeCallback;
 		}
 
 		/// <summary>
@@ -328,11 +331,13 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
-			newMask &= TAGFILTERMASK_ENTITY_TYPE;
+			uint oldMask = Entities[rawEntity].bitmask.tagBitMask;
+			uint newMask = oldMask & TAGFILTERMASK_ENTITY_TYPE; // only leave the entity-type
 			OnEntityTagChangeInternal(packedEntity, newMask);
-
-			// TODO: execute filters
+			if (tagChangeCallback != null) {
+				// tell the callback the bits that got wiped
+				tagChangeCallback(this, packedEntity, false, oldMask & MASK_TAG_ENTITY_TYPE_INV);
+			}
 		}
 
 
@@ -351,6 +356,10 @@ namespace Leopotam.EcsLite {
 			newMask |= setMask;
 
 			OnEntityTagChangeInternal(packedEntity, newMask);
+			if (tagChangeCallback != null) {
+				// tell the callback the bits that got wiped
+				tagChangeCallback(this, packedEntity, true, setMask);
+			}
 		}
 
 		/// <summary>
@@ -473,7 +482,7 @@ namespace Leopotam.EcsLite {
 
 
 		/// <summary>
-		/// Set specified mask as is. Only keep the entityType
+		/// Set to the specified mask. Only keeping the entityType
 		/// </summary>
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
@@ -484,10 +493,21 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// use a clean-mask with only the entityType set
-			uint mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
-			mask |= setMask;
+			uint oldMask = Entities[rawEntity].bitmask.tagBitMask;
+			uint newMask = oldMask & ~TAGFILTERMASK_ENTITY_TYPE;
+			newMask |= setMask;
 
-			OnEntityTagChangeInternal(packedEntity, mask);
+			OnEntityTagChangeInternal(packedEntity, newMask);
+			
+			if (tagChangeCallback != null) {
+				// not sure there is a more elegant way. but this is already pretty ok:
+				uint stay = oldMask & newMask;   // the bits that stay
+				uint wipe = oldMask & ~newMask; // the bits the get kicked
+				uint newlySet = ~(stay | wipe);// the bits that are neither staying nor kicked are 0 in (stay|wipe). Inverse=>make those one and the other 0
+				
+				tagChangeCallback(this, packedEntity, false, wipe);     // tell the callback what bits got wiped
+				tagChangeCallback(this, packedEntity, true, newlySet); // tell the callback what bits got activated
+			}
 		}
 
 
@@ -506,6 +526,10 @@ namespace Leopotam.EcsLite {
 			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask &= ~(unsetMask & ~TAGFILTERMASK_ENTITY_TYPE);
 			OnEntityTagChangeInternal(packedEntity, newMask);
+			
+			if (tagChangeCallback != null) {
+				tagChangeCallback(this, packedEntity, false, unsetMask);     // tell the callback what bits got wiped
+			}
 		}
 
 		/// <summary>
@@ -579,6 +603,7 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="entity"></param>
 		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsPacked(int entity) {
 			int worldIdx = GetPackedWorldID(entity);
 			return worldIdx != 0;
