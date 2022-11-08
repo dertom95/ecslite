@@ -122,6 +122,14 @@ namespace Leopotam.EcsLite {
             return new Enumerator<T> (this);
         }
 
+		public DelayedOp[] _GetDelayedOps() {
+			return _delayedOps;
+		}
+
+		public int _GetDelayedOpsCount() {
+			return _delayedOpsCount;
+		}
+
 #if LEOECSLITE_FILTER_EVENTS
         public void AddEventListener (IEcsFilterEventListener eventListener) {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
@@ -189,9 +197,9 @@ namespace Leopotam.EcsLite {
 				// entity already removed or marked to be removed
 				return;
 			}
-            if (AddDelayedOp (false, entity, SparseEntities[entity]-1)) {
+            if (AddDelayedOp (false, entity, -1 /*SparseEntities[entity]-1*/)) {
 				// mark sparseEnttiy as removed to prevent multiple remove-ops 
-				SparseEntities[entity] = 0;
+				// SparseEntities[entity] = 0;
 				return; 
 			}
 #if LEOECSLITE_FILTER_EVENTS
@@ -237,13 +245,28 @@ namespace Leopotam.EcsLite {
             if (_lockCount == 0 && _delayedOpsCount > 0) {
                 for (int i = 0, iMax = _delayedOpsCount; i < iMax; i++) {
                     ref var op = ref _delayedOps[i];
-                    if (op.Added) {
-                        AddEntity (op.Entity);
-                    } else {
-                        RemoveEntity (op.Entity,op.removedDenseIdx);
-                    }
+
+					var entityData = _world.GetEntityData(op.Entity);
+					if (_world.IsMaskCompatible(ref _mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
+						// current state of that entity is valid for this filter. Only add entity if not already in SparseEntities
+						if (SparseEntities[op.Entity] == 0) {
+							AddEntity(op.Entity);
+						} 
+					} else {
+						// current state(mask) is not compatible to filter. Remove if in filter
+						if (SparseEntities[op.Entity] != 0) {
+							RemoveEntity(op.Entity);
+						}
+					}
+
+					//if (op.Added) {
+     //                   AddEntity (op.Entity);
+     //               } else {
+     //                   RemoveEntity (op.Entity,op.removedDenseIdx);
+     //               }
                 }
-                _delayedOpsCount = 0;
+
+				_delayedOpsCount = 0;
             }
         }
 
@@ -303,7 +326,7 @@ namespace Leopotam.EcsLite {
             }
         }
 
-        struct DelayedOp {
+        public struct DelayedOp {
             public bool Added;
             public int Entity;
 			public int removedDenseIdx;

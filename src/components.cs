@@ -218,7 +218,7 @@ namespace Leopotam.EcsLite {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (!_world.IsEntityAliveInternal (entity)) { throw new Exception ("Cant touch destroyed entity."); }
 			if (_sparseItems[entity] == 0) { 
-				throw new Exception ($"Cant get \"{typeof (T).Name}\" component - not attached."); 
+				throw new Exception ($"[{_world.PackEntity(entity)}] Cant get \"{typeof (T).Name}\" component - not attached."); 
 			}
 #endif
 			return ref _denseItems[_sparseItems[entity]];

@@ -135,6 +135,18 @@ namespace Leopotam.EcsLite {
             return this;
         }
 
+		public EcsSystems StripSystemTypes(params System.Type[] systemsToRemove) {
+			HashSet<System.Type> removeSystems = new HashSet<System.Type>(systemsToRemove);
+			EcsSystems result = new EcsSystems(_defaultWorld);
+			foreach (var system in _allSystems) {
+				if (removeSystems.Contains(system.GetType())) {
+					continue;
+				}
+				result.Add(system);
+			}
+			return result;
+		}
+
         public EcsSystems Init () {
             if (_runSystemsCount > 0) {
                 _runSystems = new IEcsRunSystem[_runSystemsCount];

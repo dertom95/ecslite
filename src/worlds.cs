@@ -1121,27 +1121,26 @@ namespace Leopotam.EcsLite {
 				if (includeList != null) {
 					foreach (var filter in includeList) {
 						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
-#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] > 0) { 
-								throw new Exception("Entity already in filter."); 
+							if (filter.SparseEntities[entity] > 0) {
+								continue;
+								//								throw new Exception("Entity already in filter."); 
 							}
-#endif
+
 							filter.AddEntity(entity);
 						}
 					}
 				}
 				if (excludeList != null) {
-					foreach (var filter in excludeList) {
+					foreach (var filter in excludeList) { 
 						// check if the entity was in the specific before
 						bool isInFilter = filter.SparseEntities[entity] != 0;
 						//bool wasInFilter = IsMaskCompatible(ref filter.GetMask().bitmaskData, ref oldBitmask, oldBitmask.tagBitMask);
 						// then check if the filter is not compatible anymore => remove // TODO: optimization?
 						if (isInFilter && !IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
-#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] == 0) { 
-								throw new Exception("Entity not in filter."); 
+							if (filter.SparseEntities[entity] == 0) {
+								continue;
+								//throw new Exception("Entity not in filter."); 
 							}
-#endif
 							filter.RemoveEntity(entity);
 						}
 					}
@@ -1165,9 +1164,9 @@ namespace Leopotam.EcsLite {
 				if (excludeList != null) {
 					foreach (var filter in excludeList) {
 						if (IsMaskCompatible(ref filter.GetMask().bitmaskData, ref entityData.bitmask, Entities[entity].bitmask.tagBitMask)) {
-#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-							if (filter.SparseEntities[entity] > 0) { throw new Exception("Entity already in filter."); }
-#endif
+							if (filter.SparseEntities[entity] > 0) {
+								continue;
+							}
 							filter.AddEntity(entity);
 						}
 					}
@@ -1197,7 +1196,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
+		public bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
 			bool includeComponentsApplies;
 			bool excludeComponentsApplies;
 
