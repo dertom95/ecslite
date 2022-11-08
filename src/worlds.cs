@@ -712,7 +712,13 @@ namespace Leopotam.EcsLite {
 		public static T GetPackedWorld<T>(int packedEntity) where T : EcsWorld {
 			Assert.IsTrue(IsPacked(packedEntity), "GetPackedWorld needs packed entities");
 			int worldId = ((packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD) - 1;
-			T world = UnsafeUtility.As<EcsWorld, T>(ref worlds[worldId]);
+			ref EcsWorld _world = ref worlds[worldId];
+#if EZ_SANITY_CHECK
+			// test the cast
+			T cast = (T)_world;
+#endif
+
+			T world = UnsafeUtility.As<EcsWorld, T>(ref _world);
 			Assert.IsNotNull(world,$"world with idx:{worldId} is null!");
 #if EZ_SANITY_CHECK
 			// check if generation of the packed entity fit with the generation of this entity in the ecs.
