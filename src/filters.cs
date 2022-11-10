@@ -6,6 +6,7 @@
 #define LEOECSLITE_FILTER_EVENTS // for some reason unity did not add apply the define (for sure a local problem,remove if not needed anymore)
 
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 #if ENABLE_IL2CPP
@@ -82,7 +83,15 @@ namespace Leopotam.EcsLite {
         int _eventListenersCount;
 #endif
 
-        internal EcsFilter (EcsWorld world, EcsWorld.Mask mask, int denseCapacity, int sparseCapacity) {
+#if EZ_SANITY_CHECK
+		public string name;
+
+		public void DEBUG_SetName(string filterName) {
+			this.name = filterName;
+		}
+#endif
+
+		internal EcsFilter (EcsWorld world, EcsWorld.Mask mask, int denseCapacity, int sparseCapacity) {
             if (typeof(T) != typeof(NoFilterData)) {
                 _filterData = new T[denseCapacity];
             }
