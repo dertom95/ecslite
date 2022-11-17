@@ -6,6 +6,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using static Leopotam.EcsLite.EcsWorld.EntityData;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -22,11 +23,19 @@ namespace Leopotam.EcsLite {
 		int GetId ();
 		Type GetComponentType ();
 
+		/// <summary>
+		/// Calculate position in component-bitmask (ulong-array-idx and bitmask to apply) by the componentId
+		/// </summary>
+		/// <param name="componentId"></param>
+		/// <returns></returns>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static (int, uint) ComponentID2BitmaskInfo(int componentId) {
 			int _bitmaskFieldId = componentId / 64;
 			uint _componentBitmask = (uint)1 << (componentId % 64);
 			return (_bitmaskFieldId, _componentBitmask);
 		}
+
+
 	}
 
 	public interface IEcsAutoReset<T> where T : struct {

@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine.Assertions;
+using static Leopotam.EcsLite.EcsWorld.EntityData;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -232,6 +233,26 @@ namespace Leopotam.EcsLite {
 		}
 
 		/// <summary>
+		/// Create a component/tag bitmask by componentIDs and the tag-flag containing all tags
+		/// </summary>
+		/// <param name="tags"></param>
+		/// <param name="componentIDs"></param>
+		/// <returns></returns>
+		public static Mask.BitMaskData CreateComponentMask(UInt32 tagsSet,UInt32 tagsNotSet) {
+			Mask.BitMaskData dataBitmask = new Mask.BitMaskData();
+			dataBitmask.tagMaskSet = tagsSet;
+			dataBitmask.tagMaskNotSet = tagsNotSet;
+			return dataBitmask;
+		}
+
+		public static bool IsMaskTrueForEntity(int entity, ref Mask.BitMaskData bitmask) {
+			EcsWorld world = GetPackedWorld(entity);
+			EntityData data = world.GetEntityData(entity);
+			bool result = IsMaskCompatible(ref bitmask, ref data.bitmask, data.bitmask.tagBitMask);
+			return result;
+		}
+
+		/// <summary>
 		/// Callbacks to be informed if components or entities are created/deleted 
 		/// </summary>
 		/// <param name="componentChangeCallback"></param>
@@ -412,7 +433,9 @@ namespace Leopotam.EcsLite {
 
 
 			// for now use the multiTag version
-			AddMultiTagMask(packedEntity, tag1 | tag2);
+			AddTag(packedEntity, tag1);
+			AddTag(packedEntity, tag2);
+			//AddMultiTagMask(packedEntity, tag1 | tag2);
 		}
 
 
@@ -434,7 +457,10 @@ namespace Leopotam.EcsLite {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3), "Tag3 not compatible for entity");
 
 			// for now use the multiTag version
-			AddMultiTagMask(packedEntity, tag1 | tag2 | tag3);
+			//AddMultiTagMask(packedEntity, tag1 | tag2 | tag3);
+			AddTag(packedEntity, tag1);
+			AddTag(packedEntity, tag2);
+			AddTag(packedEntity, tag3);
 		}
 
 
@@ -561,9 +587,11 @@ namespace Leopotam.EcsLite {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
 
-			// TODO: write optimizied code to only check filters that have this tag involved
-			// for now using multicheck. 
-			_UnsetTagMask(packedEntity, tag1 | tag2);
+			RemoveTag(packedEntity, tag1);
+			RemoveTag(packedEntity, tag2);
+			//// TODO: write optimizied code to only check filters that have this tag involved
+			//// for now using multicheck. 
+			//_UnsetTagMask(packedEntity, tag1 | tag2);
 		}
 
 
@@ -584,9 +612,12 @@ namespace Leopotam.EcsLite {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3), "Tag3 not compatible for entity");
 
+			RemoveTag(packedEntity, tag1);
+			RemoveTag(packedEntity, tag2);
+			RemoveTag(packedEntity, tag3);
 			// TODO: write optimizied code to only check filters that have this tag involved
 			// for now using multicheck. 
-			_UnsetTagMask(packedEntity, tag1 | tag2 | tag3);
+			//_UnsetTagMask(packedEntity, tag1 | tag2 | tag3);
 		}
 
 
@@ -1184,7 +1215,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, uint entityTagMask) {
+		static bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, uint entityTagMask) {
 			bool tagSetApplies;
 			bool tagUnsetApplies;
 			tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
@@ -1202,7 +1233,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
+		public static bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
 			bool includeComponentsApplies;
 			bool excludeComponentsApplies;
 
@@ -1227,19 +1258,8 @@ namespace Leopotam.EcsLite {
 				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
 			}
-
-			//for (int i = 0, iMax = filterMask.IncludeCount; i < iMax; i++) {
-			//	if (!_pools[filterMask.Include[i]].Has (entity)) {
-			//		return false;
-			//	}
-			//}
-			//for (int i = 0, iMax = filterMask.ExcludeCount; i < iMax; i++) {
-			//	if (_pools[filterMask.Exclude[i]].Has (entity)) {
-			//		return false;
-			//	}
-			//}
-			//return true;
 		}
+
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		bool IsMaskCompatibleWithout(Mask filterMask, int entity, int componentId) {
@@ -1283,6 +1303,32 @@ namespace Leopotam.EcsLite {
 				internal UInt32 tagMaskSet;
 				internal UInt32 tagMaskNotSet;
 				internal UInt64[] componentMasks; // TODO make it fixed
+
+				/// <summary>
+				/// Set this components in the components-include-bitmask
+				/// </summary>
+				/// <param name="componentIDs"></param>
+				/// <returns></returns>
+				public BitMaskData IncComponents(params int[] componentIDs) {
+					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
+						(int idx, uint mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+						componentMasks[idx] |= mask;
+					}	
+					return this;
+				}
+
+				/// <summary>
+				/// set specified components in the components-exclude-bitmask
+				/// </summary>
+				/// <param name="componentIDs"></param>
+				/// <returns></returns>
+				public BitMaskData ExcComponents(params int[] componentIDs) {
+					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
+						(int idx, uint mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+						componentMasks[idx] &= ~mask;
+					}
+					return this;
+				}
 			}
 			readonly EcsWorld _world;
 			internal int[] Include;

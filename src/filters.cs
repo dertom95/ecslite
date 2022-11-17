@@ -256,7 +256,7 @@ namespace Leopotam.EcsLite {
                     ref var op = ref _delayedOps[i];
 
 					var entityData = _world.GetEntityData(op.Entity);
-					if (_world.IsMaskCompatible(ref _mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
+					if (EcsWorld.IsMaskCompatible(ref _mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
 						// current state of that entity is valid for this filter. Only add entity if not already in SparseEntities
 						if (SparseEntities[op.Entity] == 0) {
 							AddEntity(op.Entity);
