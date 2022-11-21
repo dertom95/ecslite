@@ -798,6 +798,18 @@ namespace Leopotam.EcsLite {
 			return ref world;
 		}
 
+		/// <summary>
+		/// Check if entity is valid (generation check and check if entity is alive)
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
+		public bool IsEntityValid(int packedEntity) {
+			uint ecsGen = GetEntityGen(packedEntity);
+			uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+			bool generationValid = ecsGen == packedGen;
+			return generationValid && IsEntityAliveInternal(packedEntity);
+		}
+
 
 		/// <summary>
 		/// Get the rawEntityId from packed entity (without the world and gen added bitwise in the entityID)
