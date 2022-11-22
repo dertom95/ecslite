@@ -39,7 +39,11 @@ namespace Leopotam.EcsLite {
     [Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
     public class EcsSystems {
-        readonly EcsWorld _defaultWorld;
+#if EZ_SANITY_CHECK
+		// for debugging reasons
+		public string name;
+#endif
+		readonly EcsWorld _defaultWorld;
         readonly Dictionary<string, EcsWorld> _worlds;
         readonly List<IEcsSystem> _allSystems;
         readonly object _shared;
