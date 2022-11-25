@@ -1458,6 +1458,8 @@ namespace Leopotam.EcsLite {
 				// take tagMasks into account for hash-calculation
 				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskNotSet);
 				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskSet);
+				Type type = typeof(T);
+				Hash = unchecked(Hash * 314159 + type.GetHashCode());
 
 				for (int i = 0, iMax = IncludeCount; i < iMax; i++) {
 					Hash = unchecked(Hash * 314159 + Include[i]);
