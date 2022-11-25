@@ -354,8 +354,8 @@ namespace Leopotam.EcsLite {
 			// work directly on the _bitmask-value
 			uint oldMask = Entities[rawEntity].bitmask.tagBitMask;
 			uint newMask = oldMask & TAGFILTERMASK_ENTITY_TYPE; // only leave the entity-type
-			OnEntityTagChangeInternal(packedEntity, newMask);
-			if (tagChangeCallback != null) {
+			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
+			if (changed && tagChangeCallback != null) {
 				// tell the callback the bits that got wiped
 				tagChangeCallback(this, packedEntity, false, oldMask & MASK_TAG_ENTITY_TYPE_INV);
 			}
@@ -376,8 +376,8 @@ namespace Leopotam.EcsLite {
 			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask |= setMask;
 
-			OnEntityTagChangeInternal(packedEntity, newMask);
-			if (tagChangeCallback != null) {
+			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
+			if (changed && tagChangeCallback != null) {
 				// tell the callback the bits that got wiped
 				tagChangeCallback(this, packedEntity, true, setMask);
 			}
@@ -523,9 +523,9 @@ namespace Leopotam.EcsLite {
 			uint newMask = oldMask & ~TAGFILTERMASK_ENTITY_TYPE;
 			newMask |= setMask;
 
-			OnEntityTagChangeInternal(packedEntity, newMask);
+			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
 			
-			if (tagChangeCallback != null) {
+			if (changed && tagChangeCallback != null) {
 				// not sure there is a more elegant way. but this is already pretty ok:
 				uint stay = oldMask & newMask;   // the bits that stay
 				uint wipe = oldMask & ~newMask; // the bits the get kicked
@@ -551,9 +551,9 @@ namespace Leopotam.EcsLite {
 			// work directly on the _bitmask-value
 			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask &= ~(unsetMask & ~TAGFILTERMASK_ENTITY_TYPE);
-			OnEntityTagChangeInternal(packedEntity, newMask);
+			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
 			
-			if (tagChangeCallback != null) {
+			if (changed && tagChangeCallback  != null) {
 				tagChangeCallback(this, packedEntity, false, unsetMask);     // tell the callback what bits got wiped
 			}
 		}
@@ -1004,7 +1004,12 @@ namespace Leopotam.EcsLite {
 			return itemsCount;
 		}
 
-		public object[] GetComponents(int entity) {
+		/// <summary>
+		/// NEVER use this in game code! This is SUPER SLOW! ONLY FOR DEBUGGING.
+		/// </summary>
+		/// <param name="entity"></param>
+		/// <returns></returns>
+		public object[] __GetComponents(int entity) {
 			object[] comps = null;
 			GetComponents(entity, ref comps);
 			return comps;
@@ -1105,13 +1110,13 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="entity"></param>
 		/// <param name="newMask"></param>
-		private void OnEntityTagChangeInternal(int packedEntity, UInt32 newMask) {
+		private bool OnEntityTagChangeInternal(int packedEntity, UInt32 newMask) {
 			int rawEntity = EcsWorld.GetPackedRawEntityId(packedEntity);
 			ref EntityData entityData = ref Entities[rawEntity];
 			UInt32 oldBitmask = entityData.bitmask.tagBitMask;
 			if (oldBitmask == newMask) {
 				// nothing to change
-				return;
+				return false;
 			}
 
 			removeFromFilter.Clear();
@@ -1155,6 +1160,7 @@ namespace Leopotam.EcsLite {
 			for (int i = 0, iEnd = addToFilter.Count; i < iEnd; i++) {
 				addToFilter[i].AddEntity(rawEntity);
 			}
+			return true;
 		}
 
 		/// <summary>
