@@ -286,15 +286,6 @@ namespace Leopotam.EcsLite {
 			return ref Entities[rawEntity];
 		}
 
-		public int NewEntity(uint entityType,params uint[] initalTags) {
-			int entity = NewEntity(entityType);
-			for(int i = 0, iEnd = initalTags.Length; i < iEnd; i++) {
-				AddTag(entity, initalTags[i]);
-			}
-			return entity;
-		}
-
-
 		public int NewEntity(uint entityTypeWithTags = 0) {
 			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
 
