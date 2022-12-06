@@ -286,11 +286,16 @@ namespace Leopotam.EcsLite {
 			return ref Entities[rawEntity];
 		}
 
-		public int NewEntity(uint entityType = 0) {
-			// check if entityType is valid. if the entityType exceeds the possible range it would automatically
-			// set tag-switches which should not be done.
-			// At least not for now. It might have a usecase :thinking: 
-			Assert.IsFalse((entityType & ~TAGFILTERMASK_ENTITY_TYPE) > 0,$"NewEntity: entityTypeId out of range! You are only allowed to use values from 0 to {TAGFILTERMASK_ENTITY_TYPE}");
+		public int NewEntity(uint entityType,params uint[] initalTags) {
+			int entity = NewEntity(entityType);
+			for(int i = 0, iEnd = initalTags.Length; i < iEnd; i++) {
+				AddTag(entity, initalTags[i]);
+			}
+			return entity;
+		}
+
+
+		public int NewEntity(uint entityTypeWithTags = 0) {
 			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
 
 			int entity;
@@ -301,7 +306,7 @@ namespace Leopotam.EcsLite {
 				entityData.ReactiveDestroyed();
 				gen = entityData.Gen;
 				// set the entityType as initial bitmask, only having the entityType and no tags attached
-				entityData.bitmask.tagBitMask = entityType;
+				entityData.bitmask.tagBitMask = entityTypeWithTags;
 			} else {
 				// new entity.
 				if (_entitiesCount == Entities.Length) {
@@ -323,7 +328,7 @@ namespace Leopotam.EcsLite {
 				entity = _entitiesCount++;
 				gen = 0; // we start with generation 0
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
-				Entities[entity].bitmask.tagBitMask = entityType;
+				Entities[entity].bitmask.tagBitMask = entityTypeWithTags;
 			}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			_leakedEntities.Add(entity);
