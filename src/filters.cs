@@ -3,9 +3,10 @@
 // Lightweight ECS framework https://github.com/Leopotam/ecslite
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
-#define LEOECSLITE_FILTER_EVENTS // for some reason unity did not add apply the define (for sure a local problem,remove if not needed anymore)
+//#define LEOECSLITE_FILTER_EVENTS // for some reason unity did not add apply the define (for sure a local problem,remove if not needed anymore)
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -78,9 +79,12 @@ namespace Leopotam.EcsLite {
         int _lockCount;
         DelayedOp[] _delayedOps;
         int _delayedOpsCount;
+		public Queue<int> queueNewEntities;
+		public Queue<int> queueRemovedEntities;
 #if LEOECSLITE_FILTER_EVENTS
         IEcsFilterEventListener[] _eventListeners = new IEcsFilterEventListener[4];
         int _eventListenersCount;
+
 #endif
 
 #if EZ_SANITY_CHECK
@@ -109,6 +113,16 @@ namespace Leopotam.EcsLite {
         public EcsWorld GetWorld () {
             return _world;
         }
+
+		public void EnableInOutQueue() {
+			queueNewEntities = new Queue<int>();
+			queueRemovedEntities = new Queue<int>();
+		}
+
+		public void DisableInOutQueue() {
+			queueNewEntities = null;
+			queueNewEntities = null;
+		}
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
         public int GetEntitiesCount () {
@@ -191,11 +205,16 @@ namespace Leopotam.EcsLite {
                 _filterData[densePosition].SetData();
             }
             _entitiesCount++;
+
+			if (queueNewEntities != null) {
+				queueNewEntities.Enqueue(packedEntity);
+			}
 #else
             _denseEntities[_entitiesCount++] = entity;
 #endif
-            SparseEntities[entity] = _entitiesCount;
+			SparseEntities[entity] = _entitiesCount;
 #if LEOECSLITE_FILTER_EVENTS
+
             ProcessEventListeners (true, packedEntity);
 #endif
         }
@@ -211,9 +230,13 @@ namespace Leopotam.EcsLite {
 				// SparseEntities[entity] = 0;
 				return; 
 			}
+			if (queueRemovedEntities != null) {
+				int packedEntity = _world.PackEntity(entity);
+				queueRemovedEntities.Enqueue(packedEntity);
+			}
 #if LEOECSLITE_FILTER_EVENTS
  #if ECS_INT_PACKED
-            ProcessEventListeners(false, _world.PackEntity(entity));
+            ProcessEventListeners(false, packedEntity);
  #else
             ProcessEventListeners(false, entity);
  #endif
