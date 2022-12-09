@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using UnityEngine.Assertions;
 
 #if ENABLE_IL2CPP
 using Unity.IL2CPP.CompilerServices;
@@ -79,8 +80,15 @@ namespace Leopotam.EcsLite {
         int _lockCount;
         DelayedOp[] _delayedOps;
         int _delayedOpsCount;
-		public Queue<int> queueNewEntities;
-		public Queue<int> queueRemovedEntities;
+
+		// TODO: replace this with an array or list. Queue won't work for shared Filters
+		private Queue<int> queueNewEntities;
+		private Queue<int> queueRemovedEntities;
+#if EZ_SANITY_CHECK
+		HashSet<int> doubleEntryCheckNew = new HashSet<int>();
+		HashSet<int> doubleEntryCheckRemoved = new HashSet<int>();
+#endif
+
 #if LEOECSLITE_FILTER_EVENTS
         IEcsFilterEventListener[] _eventListeners = new IEcsFilterEventListener[4];
         int _eventListenersCount;
@@ -186,7 +194,41 @@ namespace Leopotam.EcsLite {
             return _mask;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasEntitiesInNewQueue() {
+			Assert.IsNotNull(queueNewEntities);
+			return queueNewEntities.Count > 0;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasEntitiesInRemovedQueue() {
+			Assert.IsNotNull(queueRemovedEntities);
+			return queueRemovedEntities.Count > 0;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public int DequeueNextNewEntity() {
+			Assert.IsNotNull(queueNewEntities);
+			Assert.IsTrue(queueNewEntities.Count>0);
+			int newEntity = queueNewEntities.Dequeue();
+#if EZ_SANITY_CHECK
+			doubleEntryCheckNew.Remove(newEntity);
+#endif
+			return newEntity;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public int DequeueNextRemovedEntity() {
+			Assert.IsNotNull(queueRemovedEntities);
+			Assert.IsTrue(queueRemovedEntities.Count > 0);
+			int newEntity = queueRemovedEntities.Dequeue();
+#if EZ_SANITY_CHECK
+			doubleEntryCheckNew.Remove(newEntity);
+#endif
+			return newEntity;
+		}
+
+		[MethodImpl (MethodImplOptions.AggressiveInlining)]
         override internal void AddEntity (int entity) {
             if (AddDelayedOp (true, entity)) { return; }
             if (_entitiesCount == _denseEntities.Length) {
@@ -208,6 +250,10 @@ namespace Leopotam.EcsLite {
 
 			if (queueNewEntities != null) {
 				queueNewEntities.Enqueue(packedEntity);
+#if EZ_SANITY_CHECK
+				Assert.IsFalse(doubleEntryCheckRemoved.Contains(packedEntity),$"Problem using queueInOut: just added Entity:{packedEntity} to filter! But this is entity is already marked as removed! This problem occurs if the entity first didn't apply to the filter and then do again in one frame!Maybe you need to use another approach!");
+				doubleEntryCheckNew.Add(packedEntity);
+#endif
 			}
 #else
             _denseEntities[_entitiesCount++] = entity;
@@ -233,15 +279,20 @@ namespace Leopotam.EcsLite {
 			if (queueRemovedEntities != null) {
 				int packedEntity = _world.PackEntity(entity);
 				queueRemovedEntities.Enqueue(packedEntity);
+#if EZ_SANITY_CHECK
+				Assert.IsFalse(doubleEntryCheckNew.Contains(packedEntity), $"Problem using queueInOut: just removed Entity:{packedEntity}! But this entity is already marked as new! This might be due to the Entity applied to the filter and stopped do this in one frame. Check the filter or how you add/remove the tags and components! Maybe you might need to use another approach");
+				doubleEntryCheckRemoved.Add(packedEntity);
+#endif
+
 			}
 #if LEOECSLITE_FILTER_EVENTS
- #if ECS_INT_PACKED
+#if ECS_INT_PACKED
             ProcessEventListeners(false, packedEntity);
- #else
+#else
             ProcessEventListeners(false, entity);
- #endif
 #endif
-            var removeDenseIdx = _removeDenseIdx!=-1 ? _removeDenseIdx : (SparseEntities[entity] - 1);
+#endif
+			var removeDenseIdx = _removeDenseIdx!=-1 ? _removeDenseIdx : (SparseEntities[entity] - 1);
             SparseEntities[entity] = 0;
             _entitiesCount--;
             if (removeDenseIdx < _entitiesCount) {
