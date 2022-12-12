@@ -122,6 +122,9 @@ namespace Leopotam.EcsLite {
             return _world;
         }
 
+		/// <summary>
+		/// When enabling the inOutQueue! It is important not to forget to dequeue both queues. Otherwise the system will throw asserts
+		/// </summary>
 		public void EnableInOutQueue() {
 			queueNewEntities = new Queue<int>();
 			queueRemovedEntities = new Queue<int>();
