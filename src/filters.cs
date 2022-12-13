@@ -226,7 +226,7 @@ namespace Leopotam.EcsLite {
 			Assert.IsTrue(queueRemovedEntities.Count > 0);
 			int newEntity = queueRemovedEntities.Dequeue();
 #if EZ_SANITY_CHECK
-			doubleEntryCheckNew.Remove(newEntity);
+			doubleEntryCheckRemoved.Remove(newEntity);
 #endif
 			return newEntity;
 		}
