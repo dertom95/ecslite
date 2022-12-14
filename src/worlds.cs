@@ -960,13 +960,25 @@ namespace Leopotam.EcsLite {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public Mask Filter<T>() where T : struct {
-			var mask = _masksCount > 0 ? _masks[--_masksCount] : new Mask(this);
+			Mask mask;
+			if (_masksCount > 0) {
+				mask =  _masks[--_masksCount];
+				mask.bitmaskData.Clear();
+			} else {
+				mask = new Mask(this);
+			}
 			return mask.Inc<T>();
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public Mask Filter(uint tagsSet) {
-			var mask = _masksCount > 0 ? _masks[--_masksCount] : new Mask(this);
+			Mask mask;
+			if (_masksCount > 0) {
+				mask = _masks[--_masksCount];
+				mask.bitmaskData.Clear();
+			} else {
+				mask = new Mask(this);
+			}
 			mask.TagsSet(tagsSet);
 			return mask;
 		}
@@ -1233,11 +1245,12 @@ namespace Leopotam.EcsLite {
 			bool tagSetApplies;
 			bool tagUnsetApplies;
 			tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
-//			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entitTagMask & filterBitmaskData.tagMaskNotSet) != 0;
-			
+			//			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entitTagMask & filterBitmaskData.tagMaskNotSet) != 0;
+
 			// if not NOT-Mask is set at all we are fine
 			// otherwise: &-check the notsetmask (without entityType) with the currentTagMask. if there is any result > 0 there was at least one notsetmask-bit set => fail
-			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask & EcsWorld.MASK_TAG_ENTITY_TYPE_INV) & (filterBitmaskData.tagMaskNotSet)) == 0;
+			//tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask & EcsWorld.MASK_TAG_ENTITY_TYPE_INV) & (filterBitmaskData.tagMaskNotSet)) == 0;
+			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask) & (filterBitmaskData.tagMaskNotSet)) == 0;
 			return tagSetApplies && tagUnsetApplies;
 		}
 
@@ -1318,6 +1331,14 @@ namespace Leopotam.EcsLite {
 				internal UInt32 tagMaskNotSet;
 				internal UInt64[] componentMasks; // TODO make it fixed
 
+				public void Clear() {
+					tagMaskNotSet = 0;
+					tagMaskNotSet = 0;
+					for (int i=0,iEnd=ENTITYDATA_AMOUNT_COMPONENT_BITMASKS * 2; i < iEnd; i++) {
+						componentMasks[i] = 0;
+					}
+				}
+
 				/// <summary>
 				/// Set this components in the components-include-bitmask
 				/// </summary>
@@ -1392,7 +1413,9 @@ namespace Leopotam.EcsLite {
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
 			public Mask TagsNotSet(UInt32 bitmask) {
-				bitmaskData.tagMaskNotSet = bitmask;
+				Assert.AreEqual(0, bitmaskData.tagMaskNotSet, "TagsNotSet-Mask can only been set once!");
+				// immediately remove entity-type to make it invisible in the notset-check (so we don't need to mask it out on every check)
+				bitmaskData.tagMaskNotSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
 				return this;
 			}
 
