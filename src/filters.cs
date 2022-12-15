@@ -220,6 +220,28 @@ namespace Leopotam.EcsLite {
 			return newEntity;
 		}
 
+		/// <summary>
+		/// Clear queue
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void ClearNewQueue() {
+			queueNewEntities.Clear();
+#if EZ_SANITY_CHECK
+			doubleEntryCheckNew.Clear();
+#endif
+		}
+
+		/// <summary>
+		/// Clear queue
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void ClearRemoveQueue() {
+			queueRemovedEntities.Clear();
+#if EZ_SANITY_CHECK
+			doubleEntryCheckRemoved.Clear();
+#endif
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int DequeueNextRemovedEntity() {
 			Assert.IsNotNull(queueRemovedEntities);
