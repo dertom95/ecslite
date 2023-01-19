@@ -1346,7 +1346,7 @@ namespace Leopotam.EcsLite {
 				/// <returns></returns>
 				public BitMaskData IncComponents(params int[] componentIDs) {
 					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
-						(int idx, uint mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+						(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
 						componentMasks[idx] |= mask;
 					}	
 					return this;
@@ -1359,7 +1359,7 @@ namespace Leopotam.EcsLite {
 				/// <returns></returns>
 				public BitMaskData ExcComponents(params int[] componentIDs) {
 					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
-						(int idx, uint mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+						(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
 						componentMasks[idx] &= ~mask;
 					}
 					return this;
@@ -1608,7 +1608,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="setMask"></param>
 			/// <returns></returns>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public EntityDataBitmask SetComponentBit(int componentBitmaskId, uint setMask) {
+			public EntityDataBitmask SetComponentBit(int componentBitmaskId, UInt64 setMask) {
 #if !USE_FIXED_ARRAYS
 				if (bitmask.componentsBitMask == null) {
 					bitmask.componentsBitMask = new UInt64[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
@@ -1627,7 +1627,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="unsetMask"></param>
 			/// <returns></returns>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public EntityDataBitmask UnsetComponentBit(int componentBitmaskId, uint unsetMask) {
+			public EntityDataBitmask UnsetComponentBit(int componentBitmaskId, UInt64 unsetMask) {
 				EntityDataBitmask oldMask = bitmask;
 #if !USE_FIXED_ARRAYS
 				if (bitmask.componentsBitMask == null) {

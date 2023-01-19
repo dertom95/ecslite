@@ -29,9 +29,9 @@ namespace Leopotam.EcsLite {
 		/// <param name="componentId"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static (int, uint) ComponentID2BitmaskInfo(int componentId) {
+		public static (int, UInt64) ComponentID2BitmaskInfo(int componentId) {
 			int _bitmaskFieldId = componentId / 64;
-			uint _componentBitmask = (uint)1 << (componentId % 64);
+			UInt64 _componentBitmask = (UInt64)1 << (componentId % 64);
 			return (_bitmaskFieldId, _componentBitmask);
 		}
 
@@ -57,7 +57,7 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// The component mask to add to the corresponding componentBitmask
 		/// </summary>
-		public readonly uint _componentBitmask;
+		public readonly UInt64 _componentBitmask;
 		readonly AutoResetHandler _autoReset;
 		// 1-based index.
 		public T[] _denseItems;
