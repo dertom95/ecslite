@@ -1332,7 +1332,7 @@ namespace Leopotam.EcsLite {
 				internal UInt64[] componentMasks; // TODO make it fixed
 
 				public void Clear() {
-					tagMaskNotSet = 0;
+					tagMaskSet = 0;
 					tagMaskNotSet = 0;
 					for (int i=0,iEnd=ENTITYDATA_AMOUNT_COMPONENT_BITMASKS * 2; i < iEnd; i++) {
 						componentMasks[i] = 0;
