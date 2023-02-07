@@ -4,6 +4,7 @@
 // Copyright (c) 2021-2022 Leopotam <leopotam@gmail.com>
 // ----------------------------------------------------------------------------
 
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -151,7 +152,22 @@ namespace Leopotam.EcsLite {
 			return result;
 		}
 
-        public EcsSystems Init () {
+		public EcsSystems ReplaceSystemTypes(Dictionary<Type,IEcsSystem> replaceSystems) {
+			EcsSystems result = new EcsSystems(_defaultWorld);
+			foreach (var system in _allSystems) {
+				if (replaceSystems.ContainsKey(system.GetType())) {
+					IEcsSystem replaceSystem = replaceSystems[system.GetType()];
+					if (replaceSystem != null) {
+						result.Add(replaceSystem);
+					}
+				} else {
+					result.Add(system);
+				}
+			}
+			return result;
+		}
+
+		public EcsSystems Init () {
             if (_runSystemsCount > 0) {
                 _runSystems = new IEcsRunSystem[_runSystemsCount];
             }
