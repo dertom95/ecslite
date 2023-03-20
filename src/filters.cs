@@ -85,8 +85,8 @@ namespace Leopotam.EcsLite {
 		private Queue<int> queueNewEntities;
 		private Queue<int> queueRemovedEntities;
 #if EZ_SANITY_CHECK
-		HashSet<int> doubleEntryCheckNew = new HashSet<int>();
-		HashSet<int> doubleEntryCheckRemoved = new HashSet<int>();
+		public HashSet<int> doubleEntryCheckNew = new HashSet<int>();
+		public HashSet<int> doubleEntryCheckRemoved = new HashSet<int>();
 #endif
 
 #if LEOECSLITE_FILTER_EVENTS
