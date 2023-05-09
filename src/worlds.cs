@@ -24,6 +24,25 @@ namespace Leopotam.EcsLite {
 	[Il2CppSetOption (Option.NullChecks, false)]
 	[Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
+	
+	
+	/// <summary>
+	/// Interface to decorate components that should get their entity injected!
+	/// CAUTIONS: IT IS VERY IMPORTANT THAT THOSE structs have their very first is the entity-field of type int
+	/// e.g. 
+	/// struct Component : IEntity {
+	///   private int entity;
+	///   public int Entity => entity;
+	/// }
+	/// </summary>
+	public interface IEntity {
+		public int Entity { get; }
+	}
+
+	public struct EntityHeader {
+		public int entity;
+	}
+
 	public partial class EcsWorld {
 #if ECS_INT_PACKED
 

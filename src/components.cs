@@ -6,6 +6,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
 using static Leopotam.EcsLite.EcsWorld.EntityData;
 
 #if ENABLE_IL2CPP
@@ -148,6 +149,12 @@ namespace Leopotam.EcsLite {
 			if (_sparseItems[entity] <= 0) { throw new Exception ($"Component \"{typeof (T).Name}\" not attached to entity."); }
 #endif
 			_denseItems[_sparseItems[entity]] = (T) dataRaw;
+			if (typeof(IEntity).IsAssignableFrom(typeof(T))) {
+				unsafe {
+					ref EntityHeader ent = ref UnsafeUtility.As<object, EntityHeader>(ref dataRaw);
+					ent.entity = entity;
+				}
+			}
 		}
 
 		void IEcsPool.AddRaw (int entity, object dataRaw) {
@@ -156,6 +163,12 @@ namespace Leopotam.EcsLite {
 #endif
 			ref var data = ref Add (entity);
 			data = (T) dataRaw;
+			if (typeof(IEntity).IsAssignableFrom(typeof(T))) {
+				unsafe {
+					ref EntityHeader ent = ref UnsafeUtility.As<T, EntityHeader>(ref data);
+					ent.entity = entity;
+				}
+			}
 		}
 
 		public T[] GetRawDenseItems () {
@@ -210,11 +223,21 @@ namespace Leopotam.EcsLite {
 #if LEOECSLITE_WORLD_EVENTS
 #if ECS_INT_PACKED
 			_world.RaiseEntityChangeEvent(packedEntity);
-# else
+#else
 			_world.RaiseEntityChangeEvent(entity);
-# endif
 #endif
-			return ref _denseItems[idx];
+#endif
+
+			ref T data = ref _denseItems[idx];
+
+			if (typeof(IEntity).IsAssignableFrom(typeof(T))) {
+				unsafe {
+					ref EntityHeader ent = ref UnsafeUtility.As<T,EntityHeader>(ref data);
+					ent.entity = packedEntity;
+				}
+			}
+
+			return ref data;
 		}
 
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
