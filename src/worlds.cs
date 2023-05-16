@@ -1069,6 +1069,12 @@ namespace Leopotam.EcsLite {
 			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 		}
 
+		public void ClearFiltersFromChangedFlag() {
+			for (int i = 0, iEnd = _allFilters.Count; i < iEnd; i++) {
+				_allFilters[i].Reset();
+			}
+		}
+
 		(EcsFilter<T>, bool) GetFilterInternal<T>(Mask mask, int capacity = 16) where T : IFilterData {
 			var hash = mask.Hash;
 			var exists = _hashedFilters.TryGetValue(hash, out var filter);

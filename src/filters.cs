@@ -69,6 +69,9 @@ namespace Leopotam.EcsLite {
         internal abstract EcsWorld.Mask GetMask();
         internal int[] SparseEntities;
         internal bool updateFilters = false;
+		internal bool dataChanged = false;
+		public bool DataChanged => dataChanged;
+		public void Reset() => dataChanged = false;
     }
 
     public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
@@ -272,7 +275,7 @@ namespace Leopotam.EcsLite {
                 _filterData[densePosition].SetData();
             }
             _entitiesCount++;
-
+			dataChanged = true;
 			if (queueNewEntities != null) {
 				queueNewEntities.Enqueue(packedEntity);
 #if EZ_SANITY_CHECK
@@ -320,7 +323,9 @@ namespace Leopotam.EcsLite {
 			var removeDenseIdx = _removeDenseIdx!=-1 ? _removeDenseIdx : (SparseEntities[entity] - 1);
             SparseEntities[entity] = 0;
             _entitiesCount--;
-            if (removeDenseIdx < _entitiesCount) {
+			dataChanged = true;
+
+			if (removeDenseIdx < _entitiesCount) {
                 _denseEntities[removeDenseIdx] = _denseEntities[_entitiesCount];
                 int denseEntityPacked = _denseEntities[removeDenseIdx];
                 int sparseIdx = EcsWorld.GetPackedRawEntityId(denseEntityPacked);
