@@ -436,6 +436,7 @@ namespace Leopotam.EcsLite {
             [MethodImpl (MethodImplOptions.AggressiveInlining)]
             public void Dispose () {
                 _filter.Unlock ();
+				_filter.updateFilters = false;
             }
         }
 
