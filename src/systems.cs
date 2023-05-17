@@ -49,8 +49,8 @@ namespace Leopotam.EcsLite {
         readonly List<IEcsSystem> _allSystems;
         readonly object _shared;
 		float _deltaTime;
-        IEcsRunSystem[] _runSystems;
-        int _runSystemsCount;
+        protected IEcsRunSystem[] _runSystems;
+        protected int _runSystemsCount;
 
         public EcsSystems (EcsWorld defaultWorld, object shared = null) {
             _defaultWorld = defaultWorld;
@@ -196,7 +196,7 @@ namespace Leopotam.EcsLite {
 			return this;
         }
 
-        public void Run (float dt=0) {
+        public virtual void Run (float dt=0) {
             for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
                 _runSystems[i].Run (this,dt);
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
