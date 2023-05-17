@@ -15,6 +15,7 @@ using Unity.IL2CPP.CompilerServices;
 
 namespace Leopotam.EcsLite {
 	public interface IEcsPool {
+		int SparseArraySize();
 		void Resize (int capacity);
 		bool Has (int entity);
 		void Del (int entity);
@@ -66,6 +67,8 @@ namespace Leopotam.EcsLite {
 		public int _denseItemsCount;
 		public int[] _recycledItems;
 		public int _recycledItemsCount;
+
+		public int SparseArraySize() => _sparseItems.Length;
 #if ENABLE_IL2CPP && !UNITY_EDITOR
 		T _autoresetFakeInstance;
 #endif
