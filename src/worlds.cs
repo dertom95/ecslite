@@ -54,12 +54,12 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// TAG-Mask for special usage (not tags, but e.g. entity-type)
 		/// </summary>
-		public const UInt32 MASK_TAG_ENTITY_TYPE = 0b0000_0000_0000_0000_0000_0000_0000_1111;
+		public const UInt64 MASK_TAG_ENTITY_TYPE = 0b1111;
 
 		/// <summary>
 		/// TAG-bitmask to be usable to store tag-data
 		/// </summary>
-		public const UInt32 MASK_TAG_ENTITY_TYPE_INV = ~MASK_TAG_ENTITY_TYPE;
+		public const UInt64 MASK_TAG_ENTITY_TYPE_INV = ~MASK_TAG_ENTITY_TYPE;
 
 		public const int ENTITYDATA_AMOUNT_COMPONENT_BITMASKS = 2;
 
@@ -69,7 +69,7 @@ namespace Leopotam.EcsLite {
 		public const int ENTITYID_SHIFT_GEN = 22;
 		public const int ENTITYID_SHIFT_WORLD = 26;
 
-		public const UInt32 TAGFILTERMASK_ENTITY_TYPE = 0b00000000000000000000000000001111;
+		public const UInt64 TAGFILTERMASK_ENTITY_TYPE = 0b1111;
 
 		public const int MAX_WORLDS = (1 << 5) - 1;
 		public const int MAX_GEN = (1 << 4) - 1;
@@ -135,7 +135,7 @@ namespace Leopotam.EcsLite {
 		protected int _masksCount;
 		private Action<EcsWorld,bool, int, int> componentChangeCallback;
 		private Action<EcsWorld,bool,bool, int> entityChangeCallback;
-		private Action<EcsWorld, int, bool, UInt32> tagChangeCallback;
+		private Action<EcsWorld, int, bool, UInt64> tagChangeCallback;
 
 		protected bool _destroyed;
 #if LEOECSLITE_WORLD_EVENTS
@@ -257,7 +257,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="tags"></param>
 		/// <param name="componentIDs"></param>
 		/// <returns></returns>
-		public static Mask.BitMaskData CreateComponentMask(UInt32 tagsSet,UInt32 tagsNotSet) {
+		public static Mask.BitMaskData CreateComponentMask(UInt64 tagsSet,UInt64 tagsNotSet) {
 			Mask.BitMaskData dataBitmask = new Mask.BitMaskData();
 			dataBitmask.tagMaskSet = tagsSet;
 			dataBitmask.tagMaskNotSet = tagsNotSet;
@@ -275,7 +275,7 @@ namespace Leopotam.EcsLite {
 		/// Callbacks to be informed if components or entities are created/deleted 
 		/// </summary>
 		/// <param name="componentChangeCallback"></param>
-		public void SetChangeCallbacks(Action<EcsWorld,bool,bool, int> entityChangeCallback, Action<EcsWorld,bool,int,int> componentChangeCallback, Action<EcsWorld, int, bool, UInt32> tagChangeCallback) {
+		public void SetChangeCallbacks(Action<EcsWorld,bool,bool, int> entityChangeCallback, Action<EcsWorld,bool,int,int> componentChangeCallback, Action<EcsWorld, int, bool, UInt64> tagChangeCallback) {
 			this.componentChangeCallback = componentChangeCallback;
 			this.entityChangeCallback = entityChangeCallback;
 			this.tagChangeCallback = tagChangeCallback;
@@ -305,7 +305,7 @@ namespace Leopotam.EcsLite {
 			return ref Entities[rawEntity];
 		}
 
-		public int NewEntity(uint entityTypeWithTags = 0) {
+		public int NewEntity(ulong entityTypeWithTags = 0) {
 			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
 
 			int entity;
@@ -367,8 +367,8 @@ namespace Leopotam.EcsLite {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint oldMask = Entities[rawEntity].bitmask.tagBitMask;
-			uint newMask = oldMask & TAGFILTERMASK_ENTITY_TYPE; // only leave the entity-type
+			ulong oldMask = Entities[rawEntity].bitmask.tagBitMask;
+			ulong newMask = oldMask & TAGFILTERMASK_ENTITY_TYPE; // only leave the entity-type
 			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
 			if (changed && tagChangeCallback != null) {
 				// tell the callback the bits that got wiped
@@ -383,12 +383,12 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void AddMultiTagMask(int packedEntity, UInt32 setMask) {
+		private void AddMultiTagMask(int packedEntity, UInt64 setMask) {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask), "EntityType does not match with Tag!");
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
-			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
+			ulong newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask |= setMask;
 
 			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
@@ -403,18 +403,18 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="x"></param>
 		/// <returns></returns>
-		public static bool IsPowerOfTwo(uint x) {
+		public static bool IsPowerOfTwo(ulong x) {
 			return (x != 0) && ((x & (x - 1)) == 0);
 		}
 
 
-		public bool IsTagAllowedForEntity(int entity,UInt32 tag) {
-			UInt32 tagEntityType = (tag & MASK_TAG_ENTITY_TYPE);
+		public bool IsTagAllowedForEntity(int entity,UInt64 tag) {
+			UInt64 tagEntityType = (tag & MASK_TAG_ENTITY_TYPE);
 			if (tagEntityType == 0) {
 				// globalflag == allowed
 				return true;
 			}
-			UInt32 entityEntityType = GetEntityType(entity);
+			UInt64 entityEntityType = GetEntityType(entity);
 			return tagEntityType == entityEntityType;
 		}
 
@@ -424,7 +424,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="tag1">tag to be set</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void AddTag(int packedEntity, UInt32 tag1) {
+		public void AddTag(int packedEntity, UInt64 tag1) {
 			// TODO: Check if tag is not set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV),"Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
@@ -439,7 +439,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="tag1">tag to be set</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void AddTag(int packedEntity, UInt32 tag1, UInt32 tag2) {
+		public void AddTag(int packedEntity, UInt64 tag1, UInt64 tag2) {
 			// TODO: Check if tag is not set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)");
@@ -462,7 +462,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="tag2">tag to be set</param>
 		/// <param name="tag3">tag to be set</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void AddTag(int packedEntity, UInt32 tag1, UInt32 tag2, UInt32 tag3) {
+		public void AddTag(int packedEntity, UInt64 tag1, UInt64 tag2, UInt64 tag3) {
 			// TODO: Check if tag is not set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)");
@@ -485,7 +485,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public UInt32 GetTagMask(int packedEntity) {
+		public UInt64 GetTagMask(int packedEntity) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 			return Entities[rawEntity].bitmask.tagBitMask;
 		}
@@ -498,7 +498,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="bitmask"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool HasTagAll(int packedEntity, UInt32 bitmask) {
+		public bool HasTagAll(int packedEntity, UInt64 bitmask) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 			return (Entities[rawEntity].bitmask.tagBitMask & bitmask)==bitmask;
 		}
@@ -510,13 +510,13 @@ namespace Leopotam.EcsLite {
 		/// <param name="bitmask"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool HasTagSome(int packedEntity, UInt32 bitmask) {
+		public bool HasTagSome(int packedEntity, UInt64 bitmask) {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, bitmask), "Tag(s) not compatible to EntityType");
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// use a clean-mask with only the entityType set
-			uint mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
+			UInt64 mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
 			
 			return (mask & bitmask) > 0;
 		}
@@ -528,23 +528,23 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="setMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void SetTagMask(int packedEntity, UInt32 setMask) {
+		public void SetTagMask(int packedEntity, UInt64 setMask) {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask), "Tag not compatible to EntityType");
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// use a clean-mask with only the entityType set
-			uint oldMask = Entities[rawEntity].bitmask.tagBitMask;
-			uint newMask = oldMask & ~TAGFILTERMASK_ENTITY_TYPE;
+			UInt64 oldMask = Entities[rawEntity].bitmask.tagBitMask;
+			UInt64 newMask = oldMask & ~TAGFILTERMASK_ENTITY_TYPE;
 			newMask |= setMask;
 
 			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
 			
 			if (changed && tagChangeCallback != null) {
 				// not sure there is a more elegant way. but this is already pretty ok:
-				uint stay = oldMask & newMask;   // the bits that stay
-				uint wipe = oldMask & ~newMask; // the bits the get kicked
-				uint newlySet = ~(stay | wipe);// the bits that are neither staying nor kicked are 0 in (stay|wipe). Inverse=>make those one and the other 0
+				UInt64 stay = oldMask & newMask;   // the bits that stay
+				UInt64 wipe = oldMask & ~newMask; // the bits the get kicked
+				UInt64 newlySet = ~(stay | wipe);// the bits that are neither staying nor kicked are 0 in (stay|wipe). Inverse=>make those one and the other 0
 				
 				tagChangeCallback(this, packedEntity, false, wipe);     // tell the callback what bits got wiped
 				tagChangeCallback(this, packedEntity, true, newlySet); // tell the callback what bits got activated
@@ -558,13 +558,13 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="unsetMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]/// 
-		public void _UnsetTagMask(int packedEntity, UInt32 unsetMask) {
+		public void _UnsetTagMask(int packedEntity, UInt64 unsetMask) {
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, unsetMask), "Tag not compatible to EntityType");
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
 			// work directly on the _bitmask-value
-			uint newMask = Entities[rawEntity].bitmask.tagBitMask;
+			ulong newMask = Entities[rawEntity].bitmask.tagBitMask;
 			newMask &= ~(unsetMask & ~TAGFILTERMASK_ENTITY_TYPE);
 			bool changed = OnEntityTagChangeInternal(packedEntity, newMask);
 			
@@ -579,7 +579,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="tag1"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void RemoveTag(int packedEntity, UInt32 tag1) {
+		public void RemoveTag(int packedEntity, UInt64 tag1) {
 			// TODO: Check if tag is set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
@@ -595,7 +595,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <param name="tag1"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void RemoveTag(int packedEntity, UInt32 tag1, UInt32 tag2) {
+		public void RemoveTag(int packedEntity, UInt64 tag1, UInt64 tag2) {
 			// TODO: Check if tag is set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
@@ -618,7 +618,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="tag2"></param>
 		/// <param name="tag3"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void RemoveTag(int packedEntity, UInt32 tag1, UInt32 tag2, UInt32 tag3) {
+		public void RemoveTag(int packedEntity, UInt64 tag1, UInt64 tag2, UInt64 tag3) {
 			// TODO: Check if tag is set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
@@ -743,8 +743,8 @@ namespace Leopotam.EcsLite {
 		/// <param name="entity"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public UInt32 GetEntityType(int entity) {
-			var tagMask = GetTagMask(entity);
+		public UInt64 GetEntityType(int entity) {
+			ulong tagMask = GetTagMask(entity);
 			return tagMask & MASK_TAG_ENTITY_TYPE;
 		}
 
@@ -990,7 +990,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public Mask Filter(uint tagsSet) {
+		public Mask Filter(ulong tagsSet) {
 			Mask mask;
 			if (_masksCount > 0) {
 				mask = _masks[--_masksCount];
@@ -1143,10 +1143,10 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="entity"></param>
 		/// <param name="newMask"></param>
-		private bool OnEntityTagChangeInternal(int packedEntity, UInt32 newMask) {
+		private bool OnEntityTagChangeInternal(int packedEntity, UInt64 newMask) {
 			int rawEntity = EcsWorld.GetPackedRawEntityId(packedEntity);
 			ref EntityData entityData = ref Entities[rawEntity];
-			UInt32 oldBitmask = entityData.bitmask.tagBitMask;
+			UInt64 oldBitmask = entityData.bitmask.tagBitMask;
 			if (oldBitmask == newMask) {
 				// nothing to change
 				return false;
@@ -1266,7 +1266,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		static bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, uint entityTagMask) {
+		static bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ulong entityTagMask) {
 			bool tagSetApplies;
 			bool tagUnsetApplies;
 			tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
@@ -1285,7 +1285,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, uint entityTagBitMask) {
+		public static bool IsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, ref EntityData.EntityDataBitmask entityBitmask, ulong entityTagBitMask) {
 			bool includeComponentsApplies;
 			bool excludeComponentsApplies;
 
@@ -1352,8 +1352,8 @@ namespace Leopotam.EcsLite {
 #endif
 		public sealed class Mask {
 			public struct BitMaskData {
-				internal UInt32 tagMaskSet;
-				internal UInt32 tagMaskNotSet;
+				internal UInt64 tagMaskSet;
+				internal UInt64 tagMaskNotSet;
 				internal UInt64[] componentMasks; // TODO make it fixed
 
 				public void Clear() {
@@ -1427,7 +1427,7 @@ namespace Leopotam.EcsLite {
 			/// </summary>
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
-			public Mask TagsSet(UInt32 bitmask) {
+			public Mask TagsSet(UInt64 bitmask) {
 				bitmaskData.tagMaskSet = bitmask;
 				return this;
 			}
@@ -1437,7 +1437,7 @@ namespace Leopotam.EcsLite {
 			/// </summary>
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
-			public Mask TagsNotSet(UInt32 bitmask) {
+			public Mask TagsNotSet(UInt64 bitmask) {
 				Assert.AreEqual(0, bitmaskData.tagMaskNotSet, "TagsNotSet-Mask can only been set once!");
 				// immediately remove entity-type to make it invisible in the notset-check (so we don't need to mask it out on every check)
 				bitmaskData.tagMaskNotSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
@@ -1538,7 +1538,7 @@ namespace Leopotam.EcsLite {
 				// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
 				// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
 				// bit 10-32 custom-tags (entity-type specific tags)
-				public UInt32 tagBitMask;
+				public UInt64 tagBitMask;
 
 				/// <summary>
 				/// Two 64bit longs to check for 128 components set to this entity
@@ -1598,17 +1598,17 @@ namespace Leopotam.EcsLite {
 
 			public bool Destroyed => (entityInfo & MASK_DESTROYED) > 0;
 
-			/// <summary>
-			/// TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask
-			/// </summary>
-			[UnityEngine.Tooltip("TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask")]
-			public UInt32 TagMaskFilterKey => (bitmask.tagBitMask << 32) + (~bitmask.tagBitMask);
+			///// <summary>
+			///// TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask
+			///// </summary>
+			//[UnityEngine.Tooltip("TagMaskFilterKey used to lookup corresponding EcsFilters that fit to this tagBitMask")]
+			//public UInt32 TagMaskFilterKey => (bitmask.tagBitMask << 32) + (~bitmask.tagBitMask);
 
 			/// <summary>
 			/// Get entity-type (stored in the tagBitMask)
 			/// </summary>
 			[UnityEngine.Tooltip("Get entity-type (stored in the tagBitMask)")]
-			public uint EntityType => bitmask.tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
+			public ulong EntityType => bitmask.tagBitMask & TAGFILTERMASK_ENTITY_TYPE;
 
 			public void _UpdateHasComponents() {
 #if !USE_FIXED_ARRAYS
@@ -1670,7 +1670,7 @@ namespace Leopotam.EcsLite {
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public bool HasTagMask(uint tagmask) {
+			public bool HasTagMask(ulong tagmask) {
 				return (bitmask.tagBitMask & tagmask) == tagmask;
 			}
 
