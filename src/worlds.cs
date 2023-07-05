@@ -1364,31 +1364,31 @@ namespace Leopotam.EcsLite {
 					}
 				}
 
-				/// <summary>
-				/// Set this components in the components-include-bitmask
-				/// </summary>
-				/// <param name="componentIDs"></param>
-				/// <returns></returns>
-				public BitMaskData IncComponents(params int[] componentIDs) {
-					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
-						(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
-						componentMasks[idx] |= mask;
-					}	
-					return this;
-				}
+				///// <summary>
+				///// Set this components in the components-include-bitmask
+				///// </summary>
+				///// <param name="componentIDs"></param>
+				///// <returns></returns>
+				//public BitMaskData IncComponents(params int[] componentIDs) {
+				//	for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
+				//		(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+				//		componentMasks[idx] |= mask;
+				//	}	
+				//	return this;
+				//}
 
-				/// <summary>
-				/// set specified components in the components-exclude-bitmask
-				/// </summary>
-				/// <param name="componentIDs"></param>
-				/// <returns></returns>
-				public BitMaskData ExcComponents(params int[] componentIDs) {
-					for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
-						(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
-						componentMasks[idx] &= ~mask;
-					}
-					return this;
-				}
+				///// <summary>
+				///// set specified components in the components-exclude-bitmask
+				///// </summary>
+				///// <param name="componentIDs"></param>
+				///// <returns></returns>
+				//public BitMaskData ExcComponents(params int[] componentIDs) {
+				//	for (int i = 0, iEnd = componentIDs.Length; i < iEnd; i++) {
+				//		(int idx, UInt64 mask) = IEcsPool.ComponentID2BitmaskInfo(componentIDs[i]);
+				//		componentMasks[idx] &= ~mask; <--- THIS WAS RUBBISH
+				//	}
+				//	return this;
+				//}
 			}
 			readonly EcsWorld _world;
 			internal int[] Include;
@@ -1483,6 +1483,11 @@ namespace Leopotam.EcsLite {
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			public BitMaskData GetBitmask() {
+				return bitmaskData;
+			}
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public EcsFilter<NoFilterData> End(int capacity = 512) {
 				return End<NoFilterData>(capacity);
 			}
@@ -1517,7 +1522,7 @@ namespace Leopotam.EcsLite {
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			void Recycle() {
+			public void Recycle() {
 				Reset();
 				if (_world._masksCount == _world._masks.Length) {
 					Array.Resize(ref _world._masks, _world._masksCount << 1);
