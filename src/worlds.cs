@@ -1505,8 +1505,8 @@ namespace Leopotam.EcsLite {
 				Hash = IncludeCount + ExcludeCount;
 
 				// take tagMasks into account for hash-calculation
-				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskNotSet);
-				Hash = unchecked(Hash * 314159 + (int)bitmaskData.tagMaskSet);
+				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskNotSet.GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSet.GetHashCode());
 				Type type = typeof(T);
 				Hash = unchecked(Hash * 314159 + type.GetHashCode());
 
@@ -1514,7 +1514,7 @@ namespace Leopotam.EcsLite {
 					Hash = unchecked(Hash * 314159 + Include[i]);
 				}
 				for (int i = 0, iMax = ExcludeCount; i < iMax; i++) {
-					Hash = unchecked(Hash * 314159 - Exclude[i]);
+					Hash = unchecked(Hash * 314161 + Exclude[i]);
 				}
 				var (filter, isNew) = _world.GetFilterInternal<T>(this, capacity);
 				if (!isNew) { Recycle(); }
