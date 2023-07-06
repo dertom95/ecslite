@@ -128,9 +128,15 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// When enabling the inOutQueue! It is important not to forget to dequeue both queues. Otherwise the system will throw asserts
 		/// </summary>
-		public void EnableInOutQueue() {
+		public void EnableInOutQueue(bool fillWithCurrentData=false) {
 			queueNewEntities = new Queue<int>();
 			queueRemovedEntities = new Queue<int>();
+
+			if (fillWithCurrentData) {
+				foreach ((int entity,_) in this) {
+					queueNewEntities.Enqueue(entity);
+				}
+			}
 		}
 
 		public void DisableInOutQueue() {
