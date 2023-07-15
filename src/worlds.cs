@@ -1354,6 +1354,9 @@ namespace Leopotam.EcsLite {
 			public struct BitMaskData {
 				internal UInt64 tagMaskSet;
 				internal UInt64 tagMaskNotSet;
+				public UInt64 TagMaskSet => tagMaskSet;
+				public UInt64 TagMaskNotSet => tagMaskNotSet;
+
 				public UInt64[] componentMasks; // TODO make it fixed
 
 				public void Clear() {
@@ -1366,7 +1369,7 @@ namespace Leopotam.EcsLite {
 
 				public BitMaskData Clone() {
 					BitMaskData data = default;
-					data.tagMaskNotSet = tagMaskNotSet;
+					data.tagMaskSet = tagMaskSet;
 					data.tagMaskNotSet = tagMaskNotSet;
 					data.componentMasks = new UInt64[ENTITYDATA_AMOUNT_COMPONENT_BITMASKS * 2];
 					for (int i = 0, iEnd = data.componentMasks.Length; i < iEnd; i++) {
