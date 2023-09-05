@@ -924,6 +924,12 @@ namespace Leopotam.EcsLite {
 			return Entities;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasPool<T>() where T:struct {
+			var poolType = typeof(T);
+			return _poolHashes.ContainsKey(poolType);
+		}
+
 		public EcsPool<T> GetPool<T>(int initialDenseSize = -1) where T : struct {
 			var poolType = typeof(T);
 			if (_poolHashes.TryGetValue(poolType, out var rawPool)) {
