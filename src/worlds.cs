@@ -1095,6 +1095,11 @@ namespace Leopotam.EcsLite {
 			// add filter to tagMask-lookup
 			UInt64 tagmaskHash = mask.TagMaskHash;
 			if (tagmaskHash != 0) {
+				ulong entityType = (mask.bitmaskData.tagMaskSet & MASK_TAG_ENTITY_TYPE);
+				if (entityType > 0) {
+					// set the inverse entityType as notsetTag to prevent false positives (like EntityType 1 and 3 and 7)
+					mask.bitmaskData.tagMaskNotSet |= (~entityType) & MASK_TAG_ENTITY_TYPE;
+				}
 				_filtersByTagMask[taggedFilterAmount] = new TaggedFilter() {
 					filterBitMaskData = mask.bitmaskData,
 					filter = filter
@@ -1562,7 +1567,7 @@ namespace Leopotam.EcsLite {
 				/// </summary>
 				// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
 				// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
-				// bit 10-32 custom-tags (entity-type specific tags)
+				// bit 10-64 custom-tags (entity-type specific tags)
 				public UInt64 tagBitMask;
 
 				/// <summary>
