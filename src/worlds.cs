@@ -958,6 +958,11 @@ namespace Leopotam.EcsLite {
 			return _poolHashes.TryGetValue(type, out var pool) ? pool : null;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasPoolWithType(Type type) {
+			return _poolHashes.ContainsKey(type);
+		}
+
 		public int GetAllEntities(ref int[] entities) {
 			var count = _entitiesCount - _recycledEntitiesCount;
 			if (entities == null || entities.Length < count) {
