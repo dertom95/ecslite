@@ -74,7 +74,112 @@ namespace Leopotam.EcsLite {
 		public void Reset() => dataChanged = false;
     }
 
-    public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
+	public class FilterInOutData {
+		public HashSet<int> added;
+		public HashSet<int> removed;
+		Action<int> onAddedEntityLogic;
+		Action<int> onRemovedEntityLogic;
+
+		public FilterInOutData(int capacity) {
+			added = new HashSet<int>(capacity);
+			removed = new HashSet<int>(capacity);
+		}
+
+		public FilterInOutData SetOnAddedEntityLogic(Action<int> logic) {
+			onAddedEntityLogic = logic;
+			return this;
+		}
+
+		public FilterInOutData SetOnRemovedEntityLogic(Action<int> logic) {
+			onRemovedEntityLogic = logic;
+			return this;
+		}
+
+		internal void AddedEntity(int entity,bool forceAdd=false) {
+			// only add to added if it wasn't in removed already
+			if (forceAdd || !removed.Remove(entity)) {
+				added.Add(entity);
+			} 
+		}
+
+		internal void RemovedEntity(int entity,bool forceAdd=false) {
+			// only add to removed if it wasn't in added already
+			if (forceAdd || !added.Remove(entity)) {
+				removed.Add(entity);
+			} 
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasEntitiesInNewQueue() {
+			return added.Count > 0;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public bool HasEntitiesInRemovedQueue() {
+			return removed.Count > 0;
+		}
+
+		
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void DequeueNewEntites(bool clearAddedData=true) {
+			Assert.IsNotNull(onAddedEntityLogic);
+
+			if (added.Count > 0) {
+				foreach (int entity in added) {
+					onAddedEntityLogic(entity);
+				}
+				if (clearAddedData) {
+					ClearAddedQueue();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Clear queue
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void ClearAddedQueue() {
+			added.Clear();
+		}
+
+		/// <summary>
+		/// Clear queue
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void ClearQueues() {
+			added.Clear();
+			removed.Clear();
+		}
+
+		/// <summary>
+		/// Clear queue
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void ClearRemovedQueue() {
+			removed.Clear();
+		}
+
+		/// <summary>
+		/// This will run the onAdded-Logic on new removed
+		/// </summary>
+		/// <param name="clearRemovedData"></param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void DequeueRemovedEntities(bool clearRemovedData=true) {
+			Assert.IsNotNull(onRemovedEntityLogic);
+
+			if (added.Count > 0) {
+				foreach (int entity in added) {
+					onAddedEntityLogic(entity);
+				}
+				if (clearRemovedData) {
+					ClearRemovedQueue();
+				}
+			}
+		}
+
+	}
+
+	public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
         readonly EcsWorld _world;
         readonly EcsWorld.Mask _mask;
         int[] _denseEntities;
@@ -84,13 +189,11 @@ namespace Leopotam.EcsLite {
         DelayedOp[] _delayedOps;
         int _delayedOpsCount;
 
+
+
 		// TODO: replace this with an array or list. Queue won't work for shared Filters
-		private Queue<int> queueNewEntities;
-		private Queue<int> queueRemovedEntities;
-#if EZ_SANITY_CHECK
-		public HashSet<int> doubleEntryCheckNew = new HashSet<int>();
-		public HashSet<int> doubleEntryCheckRemoved = new HashSet<int>();
-#endif
+		bool usingInOutMechanism;
+		List<FilterInOutData> allInOutData;
 
 #if LEOECSLITE_FILTER_EVENTS
         IEcsFilterEventListener[] _eventListeners = new IEcsFilterEventListener[4];
@@ -128,20 +231,30 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// When enabling the inOutQueue! It is important not to forget to dequeue both queues. Otherwise the system will throw asserts
 		/// </summary>
-		public void EnableInOutQueue(bool fillWithCurrentData=false) {
-			queueNewEntities = new Queue<int>();
-			queueRemovedEntities = new Queue<int>();
+		public FilterInOutData EnableInOut(bool fillAddedWithCurrentData=false) {
+			if (allInOutData==null) {
+				allInOutData = new List<FilterInOutData>();
+			}
+			FilterInOutData filterInOutData = new FilterInOutData(10);
+			allInOutData.Add(filterInOutData);
+			usingInOutMechanism = true;
 
-			if (fillWithCurrentData) {
+			if (fillAddedWithCurrentData) {
 				foreach ((int entity,_) in this) {
-					queueNewEntities.Enqueue(entity);
+					filterInOutData.AddedEntity(entity, true); // add without checking the removed-queue
 				}
 			}
+
+			return filterInOutData;
 		}
 
-		public void DisableInOutQueue() {
-			queueNewEntities = null;
-			queueNewEntities = null;
+		public void DisableInOutQueue(FilterInOutData inOutData) {
+			Assert.IsNotNull(inOutData);
+			Assert.IsNotNull(allInOutData);
+			allInOutData.Remove(inOutData);
+			if (allInOutData.Count == 0) {
+				allInOutData = null;
+			}
 		}
 
         [MethodImpl (MethodImplOptions.AggressiveInlining)]
@@ -206,61 +319,6 @@ namespace Leopotam.EcsLite {
             return _mask;
         }
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool HasEntitiesInNewQueue() {
-			Assert.IsNotNull(queueNewEntities);
-			return queueNewEntities.Count > 0;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool HasEntitiesInRemovedQueue() {
-			Assert.IsNotNull(queueRemovedEntities);
-			return queueRemovedEntities.Count > 0;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public int DequeueNextNewEntity() {
-			Assert.IsNotNull(queueNewEntities);
-			Assert.IsTrue(queueNewEntities.Count>0);
-			int newEntity = queueNewEntities.Dequeue();
-#if EZ_SANITY_CHECK
-			doubleEntryCheckNew.Remove(newEntity);
-#endif
-			return newEntity;
-		}
-
-		/// <summary>
-		/// Clear queue
-		/// </summary>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void ClearNewQueue() {
-			queueNewEntities.Clear();
-#if EZ_SANITY_CHECK
-			doubleEntryCheckNew.Clear();
-#endif
-		}
-
-		/// <summary>
-		/// Clear queue
-		/// </summary>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void ClearRemoveQueue() {
-			queueRemovedEntities.Clear();
-#if EZ_SANITY_CHECK
-			doubleEntryCheckRemoved.Clear();
-#endif
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public int DequeueNextRemovedEntity() {
-			Assert.IsNotNull(queueRemovedEntities);
-			Assert.IsTrue(queueRemovedEntities.Count > 0);
-			int newEntity = queueRemovedEntities.Dequeue();
-#if EZ_SANITY_CHECK
-			doubleEntryCheckRemoved.Remove(newEntity);
-#endif
-			return newEntity;
-		}
 
 		[MethodImpl (MethodImplOptions.AggressiveInlining)]
         override internal void AddEntity (int entity) {
@@ -282,12 +340,11 @@ namespace Leopotam.EcsLite {
             }
             _entitiesCount++;
 			dataChanged = true;
-			if (queueNewEntities != null) {
-				queueNewEntities.Enqueue(packedEntity);
-#if EZ_SANITY_CHECK
-				Assert.IsFalse(doubleEntryCheckRemoved.Contains(packedEntity),$"Problem using queueInOut: just added Entity:{packedEntity} to filter! But this is entity is already marked as removed! This problem occurs if the entity first didn't apply to the filter and then do again in one frame!Maybe you need to use another approach!");
-				doubleEntryCheckNew.Add(packedEntity);
-#endif
+			if (usingInOutMechanism) {
+				for (int i = 0, iEnd = allInOutData.Count; i < iEnd; i++) {
+					FilterInOutData inOutData = allInOutData[i];
+					inOutData.AddedEntity(packedEntity);
+				}
 			}
 #else
             _denseEntities[_entitiesCount++] = entity;
@@ -310,14 +367,12 @@ namespace Leopotam.EcsLite {
 				// SparseEntities[entity] = 0;
 				return; 
 			}
-			if (queueRemovedEntities != null) {
+			if (usingInOutMechanism) {
 				int packedEntity = _world.PackEntity(entity);
-				queueRemovedEntities.Enqueue(packedEntity);
-#if EZ_SANITY_CHECK
-				Assert.IsFalse(doubleEntryCheckNew.Contains(packedEntity), $"Problem using queueInOut: just removed Entity:{packedEntity}! But this entity is already marked as new! This might be due to the Entity applied to the filter and stopped do this in one frame. Check the filter or how you add/remove the tags and components! Maybe you might need to use another approach");
-				doubleEntryCheckRemoved.Add(packedEntity);
-#endif
-
+				for (int i = 0, iEnd = allInOutData.Count; i < iEnd; i++) {
+					FilterInOutData inOutData = allInOutData[i];
+					inOutData.RemovedEntity(packedEntity);
+				}
 			}
 #if LEOECSLITE_FILTER_EVENTS
 #if ECS_INT_PACKED
