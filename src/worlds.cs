@@ -796,18 +796,20 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static ref EcsWorld GetPackedWorld(int packedEntity) {
+		public static ref EcsWorld GetPackedWorld(int packedEntity, bool enforceValidEntities=true) {
 			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
 			ref EcsWorld world = ref worlds[worldId-1];
 			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
 
 #if EZ_SANITY_CHECK
-			// check if generation of the packed entity fit with the generation of this entity in the ecs.
-			// If there is a mismatch this means that we stored a destroyed entity somewhere!
-			uint ecsGen = world.GetEntityGen(packedEntity);
-			uint packedGen = EcsWorld.GetPackedGen(packedEntity);
-			if (ecsGen != packedGen) {
-				throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{packedGen} current:{ecsGen}] Seems we stored a destroyed Entity somewhere!");
+			if (enforceValidEntities) {
+				// check if generation of the packed entity fit with the generation of this entity in the ecs.
+				// If there is a mismatch this means that we stored a destroyed entity somewhere!
+				uint ecsGen = world.GetEntityGen(packedEntity);
+				uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+				if (ecsGen != packedGen) {
+					throw new Exception($"PackedEntity[{packedEntity}]: There is a generation mismatch![packed:{packedGen} current:{ecsGen}] Seems we stored a destroyed Entity somewhere!");
+				}
 			}
 #endif
 			return ref world;
