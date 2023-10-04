@@ -70,6 +70,9 @@ namespace Leopotam.EcsLite {
         internal int[] SparseEntities;
         internal bool updateFilters = false;
 		internal bool dataChanged = false;
+		/// <summary>
+		/// DEPRECATED! Use EnableInOut() => and its HasChanged-Property. This will make sure the changes get recognized on later frames as well. Filter's DataChanged will be cleared after each frame
+		/// </summary>
 		public bool DataChanged => dataChanged;
 		public void Reset() => dataChanged = false;
     }
@@ -77,6 +80,7 @@ namespace Leopotam.EcsLite {
 	public class FilterInOutData {
 		public HashSet<int> added;
 		public HashSet<int> removed;
+		public bool HasChanges => added.Count > 0 || removed.Count > 0;
 		Action<int> onAddedEntityLogic;
 		Action<int> onRemovedEntityLogic;
 
