@@ -151,7 +151,6 @@ namespace Leopotam.EcsLite {
 
 
 
-		// TODO: replace this with an array or list. Queue won't work for shared Filters
 		bool usingInOutMechanism;
 		List<FilterInOutData> allInOutData;
 
