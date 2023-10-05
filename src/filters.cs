@@ -81,22 +81,10 @@ namespace Leopotam.EcsLite {
 		public HashSet<int> added;
 		public HashSet<int> removed;
 		public bool HasChanges => added.Count > 0 || removed.Count > 0;
-		Action<int> onAddedEntityLogic;
-		Action<int> onRemovedEntityLogic;
 
 		public FilterInOutData(int capacity) {
 			added = new HashSet<int>(capacity);
 			removed = new HashSet<int>(capacity);
-		}
-
-		public FilterInOutData SetOnAddedEntityLogic(Action<int> logic) {
-			onAddedEntityLogic = logic;
-			return this;
-		}
-
-		public FilterInOutData SetOnRemovedEntityLogic(Action<int> logic) {
-			onRemovedEntityLogic = logic;
-			return this;
 		}
 
 		internal void AddedEntity(int entity,bool forceAdd=false) {
@@ -124,20 +112,6 @@ namespace Leopotam.EcsLite {
 		}
 
 		
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void DequeueNewEntites(bool clearAddedData=true) {
-			Assert.IsNotNull(onAddedEntityLogic);
-
-			if (added.Count > 0) {
-				foreach (int entity in added) {
-					onAddedEntityLogic(entity);
-				}
-				if (clearAddedData) {
-					ClearAddedQueue();
-				}
-			}
-		}
-
 		/// <summary>
 		/// Clear queue
 		/// </summary>
@@ -234,6 +208,7 @@ namespace Leopotam.EcsLite {
 
 		/// <summary>
 		/// When enabling the inOutQueue! It is important not to forget to dequeue both queues. Otherwise the system will throw asserts
+		/// CAUTION: DO NOT FORGET TO CLEAR THE QUEUES (ClearQueues(),ClearAddedQueue(),ClearRemovedQueue())
 		/// </summary>
 		public FilterInOutData EnableInOut(bool fillAddedWithCurrentData=false) {
 			if (allInOutData==null) {
