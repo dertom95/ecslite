@@ -137,24 +137,6 @@ namespace Leopotam.EcsLite {
 			removed.Clear();
 		}
 
-		/// <summary>
-		/// This will run the onAdded-Logic on new removed
-		/// </summary>
-		/// <param name="clearRemovedData"></param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void DequeueRemovedEntities(bool clearRemovedData=true) {
-			Assert.IsNotNull(onRemovedEntityLogic);
-
-			if (added.Count > 0) {
-				foreach (int entity in added) {
-					onAddedEntityLogic(entity);
-				}
-				if (clearRemovedData) {
-					ClearRemovedQueue();
-				}
-			}
-		}
-
 	}
 
 	public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
