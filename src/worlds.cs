@@ -1072,12 +1072,24 @@ namespace Leopotam.EcsLite {
 			return itemsCount;
 		}
 
+		public static bool IsPackedEntityAlive(int packedEntity) {
+			EcsWorld world = GetPackedWorld(packedEntity,false);
+			return world.IsEntityAliveInternal(packedEntity);
+		}
 
 		/// <summary>
 		/// Needs to be called with unpacked entity 
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool IsEntityAliveInternal(int packedEntity) {
+			uint ecsGen = GetEntityGen(packedEntity);
+			if (IsPacked(packedEntity)) {
+				uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+				if (ecsGen != packedGen) {
+					return false;
+				}
+			}
+
 			int entity = GetPackedRawEntityId(packedEntity);
 			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 		}
