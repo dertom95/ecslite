@@ -500,7 +500,12 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool HasTagAll(int packedEntity, UInt64 bitmask) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
-			return (Entities[rawEntity].bitmask.tagBitMask & bitmask)==bitmask;
+			ulong entityTagMask = Entities[rawEntity].bitmask.tagBitMask;
+
+			ulong checkTags = bitmask & MASK_TAG_ENTITY_TYPE_INV;
+			ulong checkEntityType = bitmask & MASK_TAG_ENTITY_TYPE;
+
+			return (checkTags & entityTagMask) == checkTags && (checkEntityType == 0 || checkEntityType == (entityTagMask & MASK_TAG_ENTITY_TYPE));
 		}
 
 		/// <summary>
@@ -511,14 +516,12 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool HasTagSome(int packedEntity, UInt64 bitmask) {
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, bitmask), "Tag(s) not compatible to EntityType");
-
 			int rawEntity = GetPackedRawEntityId(packedEntity);
+			ulong entityTagMask = Entities[rawEntity].bitmask.tagBitMask;
+			ulong checkTags = bitmask & MASK_TAG_ENTITY_TYPE_INV;
+			ulong checkEntityType = bitmask & MASK_TAG_ENTITY_TYPE;
 
-			// use a clean-mask with only the entityType set
-			UInt64 mask = Entities[rawEntity].bitmask.tagBitMask & ~TAGFILTERMASK_ENTITY_TYPE;
-			
-			return (mask & bitmask) > 0;
+			return (checkTags & entityTagMask) > 0 && (checkEntityType == 0 || checkEntityType == (entityTagMask & MASK_TAG_ENTITY_TYPE));
 		}
 
 
