@@ -196,11 +196,31 @@ namespace Leopotam.EcsLite {
 			return this;
         }
 
-        public virtual void Run (float dt=0) {
-            for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
-                _runSystems[i].Run (this,dt);
+		public virtual void Run(float dt = 0) {
+			for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
+				_runSystems[i].Run(this, dt);
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
-                var worldName = CheckForLeakedEntities ();
+				var worldName = CheckForLeakedEntities();
+				if (worldName != null) { throw new System.Exception($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType().Name}.Run()."); }
+#endif
+			}
+		}
+
+		/// <summary>
+		/// Runs the systems with each system being secured via try/catch
+		/// </summary>
+		/// <param name="dt"></param>
+		public virtual void RunSecured (float dt=0) {
+            for (int i = 0, iMax = _runSystemsCount; i < iMax; i++) {
+				try {
+					_runSystems[i].Run(this, dt);
+				}
+				catch (Exception e) {
+					UnityEngine.Debug.LogError($"Catched Error: System[{_runSystems[i].GetType()}] threw an error!");
+					UnityEngine.Debug.LogException(e);
+				}
+#if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
+				var worldName = CheckForLeakedEntities ();
                 if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {_runSystems[i].GetType ().Name}.Run()."); }
 #endif
             }
