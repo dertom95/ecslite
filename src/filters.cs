@@ -75,7 +75,15 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		public bool DataChanged => dataChanged;
 		public void Reset() => dataChanged = false;
-    }
+
+#if EZ_SANITY_CHECK
+		public string name;
+
+		public void DEBUG_SetName(string filterName) {
+			this.name = filterName;
+		}
+#endif
+	}
 
 	public class FilterInOutData {
 		public HashSet<int> added;
@@ -160,13 +168,7 @@ namespace Leopotam.EcsLite {
 
 #endif
 
-#if EZ_SANITY_CHECK
-		public string name;
 
-		public void DEBUG_SetName(string filterName) {
-			this.name = filterName;
-		}
-#endif
 
 		internal EcsFilter (EcsWorld world, EcsWorld.Mask mask, int denseCapacity, int sparseCapacity) {
             if (typeof(T) != typeof(NoFilterData)) {

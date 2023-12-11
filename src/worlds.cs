@@ -43,6 +43,18 @@ namespace Leopotam.EcsLite {
 		public int entity;
 	}
 
+	public static class HashFunction {
+		private static ulong[] primeNumbers = { 17, 19, 23 };
+
+		public static ulong GetHash(ulong value1, ulong value2, ulong value3) {
+			ulong hash = primeNumbers[0] * value1;
+			hash ^= primeNumbers[1] * value2;
+			hash ^= primeNumbers[2] * value3;
+
+			return hash;
+		}
+	}
+
 	public partial class EcsWorld {
 #if ECS_INT_PACKED
 
@@ -1474,7 +1486,7 @@ namespace Leopotam.EcsLite {
 #endif
 			}
 
-			public UInt64 TagMaskHash => unchecked(((bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet) * (17 + bitmaskData.tagMaskSomeSet));
+			public UInt64 TagMaskHash => HashFunction.GetHash(bitmaskData.tagMaskSet,bitmaskData.tagMaskNotSet,bitmaskData.tagMaskSomeSet);
 
 			/// <summary>
 			/// Tag-bits that needs to be set to be a valid filter 
