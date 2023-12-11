@@ -1154,8 +1154,8 @@ namespace Leopotam.EcsLite {
 			for (int i = 0, iMax = _entitiesCount; i < iMax; i++) {
 				ref var entityData = ref Entities[i];
 				//if (entityData.HasComponents && IsMaskCompatible(ref mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
-				if (IsMaskCompatible(ref mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
-						filter.AddEntity(i);
+				if (!entityData.Destroyed && IsMaskCompatible(ref mask.bitmaskData, ref entityData.bitmask, entityData.bitmask.tagBitMask)) {
+					filter.AddEntity(i);
 				}
 			}
 #if LEOECSLITE_WORLD_EVENTS
@@ -1309,7 +1309,8 @@ namespace Leopotam.EcsLite {
 			// otherwise: &-check the notsetmask (without entityType) with the currentTagMask. if there is any result > 0 there was at least one notsetmask-bit set => fail
 			//tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask & EcsWorld.MASK_TAG_ENTITY_TYPE_INV) & (filterBitmaskData.tagMaskNotSet)) == 0;
 			tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || ((entityTagMask) & (filterBitmaskData.tagMaskNotSet)) == 0;
-			return tagSetApplies && tagUnsetApplies;
+			bool tagSomeSetApplies = filterBitmaskData.tagMaskSomeSet == 0 || ((entityTagMask) & (filterBitmaskData.tagMaskSomeSet)) > 0;
+			return tagSetApplies && tagUnsetApplies && tagSomeSetApplies;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1339,6 +1340,9 @@ namespace Leopotam.EcsLite {
 
 				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
 								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
+
+				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
+				&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
 
 				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
@@ -1387,8 +1391,11 @@ namespace Leopotam.EcsLite {
 			public struct BitMaskData {
 				internal UInt64 tagMaskSet;
 				internal UInt64 tagMaskNotSet;
+				internal UInt64 tagMaskSomeSet;
+
 				public UInt64 TagMaskSet => tagMaskSet;
 				public UInt64 TagMaskNotSet => tagMaskNotSet;
+				public UInt64 TagMaskSomeSet => tagMaskSomeSet;
 
 				public UInt64[] componentMasks; // TODO make it fixed
 
@@ -1467,7 +1474,7 @@ namespace Leopotam.EcsLite {
 #endif
 			}
 
-			public UInt64 TagMaskHash => (bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet;
+			public UInt64 TagMaskHash => unchecked(((bitmaskData.tagMaskSet << 32) + bitmaskData.tagMaskNotSet) * (17 + bitmaskData.tagMaskSomeSet));
 
 			/// <summary>
 			/// Tag-bits that needs to be set to be a valid filter 
@@ -1475,6 +1482,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
 			public Mask TagsSet(UInt64 bitmask) {
+				Assert.AreEqual(0, bitmaskData.tagMaskSet, "TagsSet-Mask can only been set once!");
 				bitmaskData.tagMaskSet = bitmask;
 				return this;
 			}
@@ -1488,6 +1496,18 @@ namespace Leopotam.EcsLite {
 				Assert.AreEqual(0, bitmaskData.tagMaskNotSet, "TagsNotSet-Mask can only been set once!");
 				// immediately remove entity-type to make it invisible in the notset-check (so we don't need to mask it out on every check)
 				bitmaskData.tagMaskNotSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
+				return this;
+			}
+
+			/// <summary>
+			/// Tag-bits where at least one must be set for the filter to be true
+			/// </summary>
+			/// <param name="bitmask"></param>
+			/// <returns></returns>
+			public Mask TagsSomeSet(UInt64 bitmask) {
+				Assert.AreEqual(0, bitmaskData.tagMaskSomeSet, "TagsSomeSet-Mask can only been set once!");
+				// immediately remove entity-type to make it invisible in the someset-check (so we don't need to mask it out on every check)
+				bitmaskData.tagMaskSomeSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
 				return this;
 			}
 
@@ -1554,6 +1574,7 @@ namespace Leopotam.EcsLite {
 				// take tagMasks into account for hash-calculation
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskNotSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSet.GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSomeSet.GetHashCode());
 				Type type = typeof(T);
 				Hash = unchecked(Hash * 314159 + type.GetHashCode());
 
@@ -1731,7 +1752,8 @@ namespace Leopotam.EcsLite {
 			public bool IsTagsMaskCompatible(ref Mask.BitMaskData filterBitmaskData, uint entityTagMask) {
 				bool tagSetApplies = filterBitmaskData.tagMaskSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSet) == filterBitmaskData.tagMaskSet;
 				bool tagUnsetApplies = filterBitmaskData.tagMaskNotSet == 0 || (~entityTagMask & filterBitmaskData.tagMaskNotSet) != 0;
-				return tagSetApplies && tagUnsetApplies;
+				bool tagSomeApplies = filterBitmaskData.tagMaskSomeSet == 0 || (entityTagMask & filterBitmaskData.tagMaskSomeSet) > 0;
+				return tagSetApplies && tagUnsetApplies && tagSomeApplies;
 			}
 		}
 	}
