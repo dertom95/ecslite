@@ -3,16 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.Assertions;
 
 public class GrowableStructArrayIndexOnly<T> where T : unmanaged {
 	public T[] data;
 
 	public int Capacity => capacity;
+
+	[SerializeField]
 	protected int capacity;
+	[SerializeField]
 	protected int initialCapacity;
 
 	public int Count => count;
+	[SerializeField]
 	protected int count;
 
 	public GrowableStructArrayIndexOnly(int initialCapacity) {
