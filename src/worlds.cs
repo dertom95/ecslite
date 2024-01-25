@@ -245,7 +245,8 @@ namespace Leopotam.EcsLite {
 			for (var i = _entitiesCount - 1; i >= 0; i--) {
 				ref var entityData = ref Entities[i];
 				if (entityData.HasComponents) {
-					DelEntity(i);
+					int packedEntity = PackEntity(i);
+					DelEntity(packedEntity);
 				}
 			}
 			_destroyed = true;
@@ -281,6 +282,23 @@ namespace Leopotam.EcsLite {
 			EntityData data = world.GetEntityData(entity);
 			bool result = IsMaskCompatible(ref bitmask, ref data.bitmask, data.bitmask.tagBitMask);
 			return result;
+		}
+
+		/// <summary>
+		/// Checks if the specified entity in a world of this specific world type and if yes return true and output the world in world
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="entity"></param>
+		/// <param name="world"></param>
+		/// <returns></returns>
+		public static bool IsEntityInWorldType<T>(int entity, out T world) {
+			EcsWorld entityWorld = GetPackedWorld(entity);
+			if (entityWorld is T t) {
+				world = t;
+				return true;
+			}
+			world = default;
+			return false;
 		}
 
 		/// <summary>
@@ -794,17 +812,6 @@ namespace Leopotam.EcsLite {
 			return world;
 		}
 
-		[System.Diagnostics.Conditional("DEBUG")]
-		public static void AssertIsEntityValid(int entity,EcsWorld world=null) {
-			if (EcsWorld.IsPacked(entity)) {
-				// this call will do all the checks needed
-				EcsWorld packedWorld = GetPackedWorld(entity);
-				if (world != null) {
-					Assert.AreEqual(packedWorld, world);
-				}
-			}
-		}
-
 		/// <summary>
 		/// Get packed world as base-class EcsWorld
 		/// </summary>
@@ -836,10 +843,17 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		public bool IsEntityValid(int packedEntity) {
-			uint ecsGen = GetEntityGen(packedEntity);
-			uint packedGen = EcsWorld.GetPackedGen(packedEntity);
-			bool generationValid = ecsGen == packedGen;
-			return generationValid && IsEntityAliveInternal(packedEntity);
+			bool result = ((packedEntity & ENTITYID_MASK_WORLD) == worldBitmask) // entity from this world?
+					// && (GetEntityGen(packedEntity) == GetEntityGen(packedEntity)) // same generation as it should have | DONE in IsEntityAlive
+					&& IsEntityAliveInternal(packedEntity);
+			return result;
+		}
+
+		[System.Diagnostics.Conditional("DEBUG")]
+		public void AssertIsEntityValid(int packedEntity) {
+			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD),worldBitmask,"Entity-World mismatch!");
+			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,"Generation mismatch!");
+			Assert.IsTrue(IsEntityAliveInternal(packedEntity), "Entity not alive!");
 		}
 
 
@@ -855,9 +869,9 @@ namespace Leopotam.EcsLite {
 		}
 #endif
 
-		public void DelEntity(int entity) {
+		public void DelEntity(int packedEntity) {
 #if ECS_INT_PACKED
-			entity = EcsWorld.GetPackedRawEntityId(entity);
+			int entity = EcsWorld.GetPackedRawEntityId(packedEntity);
 #endif
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (entity < 0 || entity >= _entitiesCount) { throw new Exception("Cant touch destroyed entity."); }
@@ -871,13 +885,13 @@ namespace Leopotam.EcsLite {
 			// kill components.
 			if (entityData.HasComponents) {
 				if (entityChangeCallback != null) {
-					entityChangeCallback(this,true,false, entity); // tell callback this entity is going to be destroyed 
+					entityChangeCallback(this,true,false, packedEntity); // tell callback this entity is going to be destroyed 
 				}
 				var idx = 0;
 				while (entityData.HasComponents && idx < _poolsCount) {
 					for (; idx < _poolsCount; idx++) {
 						if (_pools[idx].Has(entity)) {
-							_pools[idx++].Del(entity);
+							_pools[idx++].Del(packedEntity);
 							break;
 						}
 					}
@@ -891,7 +905,7 @@ namespace Leopotam.EcsLite {
 				return;
 			}
 
-			ClearEntityStateMask(entity);
+			ClearEntityStateMask(packedEntity);
 			//entityData.Gen = (uint)(entityData.Gen == short.MaxValue ? -1 : -(entityData.Gen + 1)); // no need to check for end of short. This is done on Gen-Property 
 			// entityData.Gen = (uint)(-(entityData.Gen + 1));
 			entityData.Destroy();
@@ -906,7 +920,7 @@ namespace Leopotam.EcsLite {
 			}
 #endif
 			if (entityChangeCallback != null) {
-				entityChangeCallback(this,false, false, entity); // tell callback this entity is destroyed for good
+				entityChangeCallback(this,false, false, packedEntity); // tell callback this entity is destroyed for good
 			}
 		}
 
@@ -1244,7 +1258,7 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// CAUTIONS: Needs to be called with unpacked entity !
 		/// </summary>
-		public void OnEntityChangeInternal(int entity, int componentType, ref EntityData.EntityDataBitmask oldBitmask, bool added) {
+		public void OnEntityChangeInternal(int entity, int packedEntity, int componentType, ref EntityData.EntityDataBitmask oldBitmask, bool added) {
 			var includeList = _filtersByIncludedComponents[componentType];
 			var excludeList = _filtersByExcludedComponents[componentType];
 
@@ -1306,7 +1320,7 @@ namespace Leopotam.EcsLite {
 				}
 			}
 			if (componentChangeCallback != null) {
-				componentChangeCallback(this,added, entity, componentType);
+				componentChangeCallback(this,added, packedEntity, componentType);
 			}
 		}
 
