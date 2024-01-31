@@ -101,10 +101,13 @@ namespace Leopotam.EcsLite {
             return world;
         }
 
+		public virtual void OnDestroy(IEcsDestroySystem system) { }
+
         public void Destroy () {
             for (var i = _allSystems.Count - 1; i >= 0; i--) {
                 if (_allSystems[i] is IEcsDestroySystem destroySystem) {
                     destroySystem.Destroy (this);
+					OnDestroy(destroySystem);
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
                     var worldName = CheckForLeakedEntities ();
                     if (worldName != null) { throw new System.Exception ($"Empty entity detected in world \"{worldName}\" after {destroySystem.GetType ().Name}.Destroy()."); }
