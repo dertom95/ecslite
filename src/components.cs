@@ -55,11 +55,11 @@ namespace Leopotam.EcsLite {
 		/// <summary>
 		/// The idx inside of EntityData's componentBitmask-array
 		/// </summary>
-		public readonly int _bitmaskFieldId;
+		public int _bitmaskFieldId;
 		/// <summary>
 		/// The component mask to add to the corresponding componentBitmask
 		/// </summary>
-		public readonly UInt64 _componentBitmask;
+		public UInt64 _componentBitmask;
 		readonly AutoResetHandler _autoReset;
 		// 1-based index.
 		public T[] _denseItems;
@@ -113,6 +113,10 @@ namespace Leopotam.EcsLite {
 			}
 		}
 
+		public void OverrideInternalBitmask(int bitmaskIdx, ulong bitmask) {
+			this._bitmaskFieldId = bitmaskIdx;
+			this._componentBitmask = bitmask;
+		}
 
 
 #if UNITY_2020_3_OR_NEWER
