@@ -368,7 +368,9 @@ namespace Leopotam.EcsLite {
 				entity = _entitiesCount++;
 				gen = 0; // we start with generation 0
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
+				Entities[entity].ReactiveDestroyed();
 				Entities[entity].bitmask.tagBitMask = entityTypeWithTags;
+				
 			}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			_leakedEntities.Add(entity);
@@ -1629,6 +1631,8 @@ namespace Leopotam.EcsLite {
 
 
 		public unsafe struct EntityData {
+
+			[StructLayout(LayoutKind.Explicit)]
 			public unsafe struct EntityDataBitmask {
 				/// <summary>
 				/// Bitmask representing somekind of state of that entity. DO NOT SET VALUE DIRECTLY!!  THE EcsWorld needs to know if data changed here!!! As long as you know what you are doing....don't do it!
@@ -1637,7 +1641,9 @@ namespace Leopotam.EcsLite {
 				// bit 01-04 entity-type (e.g. settler, plant, ... 0=custom for entities, that are more like an helper entity...  there shouldn't be too much real entitiy-types. I hope 16 will be enough
 				// bit 05-09 default-tags (tags that makes sense on any entity-type e.g. active,damaged?....
 				// bit 10-64 custom-tags (entity-type specific tags)
+				[FieldOffset(0)]
 				public UInt64 tagBitMask;
+
 
 				/// <summary>
 				/// Two 64bit longs to check for 128 components set to this entity
@@ -1648,14 +1654,39 @@ namespace Leopotam.EcsLite {
 				public UInt64[] componentsBitMask;
 #else
 				[MarshalAs(UnmanagedType.ByValArray/*, SizeConst = 123*/)]
+				[FieldOffset(sizeof(UInt64))]
+				[NonSerialized]
 				public fixed UInt64 componentsBitMask[EcsWorld.ENTITYDATA_AMOUNT_COMPONENT_BITMASKS];
+
+				// I'm using the following two variables to safely read and write the positions of the upper fixed array
+				// it seems that the (de)serializer had problems with the second idx. With this 'data/position-sharing' I could
+				// make it work.
+				[FieldOffset(sizeof(UInt64))]
+				public UInt64 c1;
+				[FieldOffset(2*sizeof(UInt64))]
+				public UInt64 c2;
 #endif
+
+
+
+
+
+
+#if DEBUG
+
+				bool IsNull => componentsBitMask[1] == 0;
+#endif
+				public ulong GetComponentBitmask(int idx) {
+					return componentsBitMask[idx];
+				}
 			}
 
 
+
+
 			public const uint MASK_GEN = 0b0000000000000000000000001111;
-			public const uint MASK_HAS_COMPONENTS = 0b0000000000000000000000010000;
-			public const uint MASK_DESTROYED = 0b0000000000000000000000100000;
+			public const uint MASK_HAS_COMPONENTS = (1 << 4);
+			public const uint MASK_DESTROYED = (1 << 5);
 			// bit 01-04 gen
 			// bit 05    has components
 			// bit 06-32 unused
@@ -1681,12 +1712,10 @@ namespace Leopotam.EcsLite {
 			}
 
 			public void ReactiveDestroyed() {
-#if EZ_SANITY_CHECK
-				if (!Destroyed) {
-					throw new Exception("Tried to activate an entity that is not marked as destroyed");
-				}
-#endif
 				entityInfo &= ~MASK_DESTROYED;
+				bitmask.componentsBitMask[0] = 0;
+				bitmask.componentsBitMask[1] = 0;
+				bitmask.tagBitMask = 0;
 				// no need to set a new generation as this is done by the destruction
 			}
 
