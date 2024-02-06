@@ -15,6 +15,10 @@ using Unity.IL2CPP.CompilerServices;
 
 namespace Leopotam.EcsLite {
 	public interface IEcsPool {
+		/// <summary>
+		/// Returns bitmaskFieldID and bitmask for the component this pool is managing
+		/// </summary>
+		public (int,ulong) BitmaskInfo { get; }
 		int SparseArraySize();
 		void Resize(int capacity);
 		bool Has(int entity);
@@ -31,7 +35,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="componentId"></param>
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static (int, UInt64) ComponentID2BitmaskInfo(int componentId) {
+		protected static (int, UInt64) ComponentID2BitmaskInfo(int componentId) {
 			int _bitmaskFieldId = componentId / 64;
 			UInt64 _componentBitmask = (UInt64)1 << (componentId % 64);
 			return (_bitmaskFieldId, _componentBitmask);
@@ -60,6 +64,9 @@ namespace Leopotam.EcsLite {
 		/// The component mask to add to the corresponding componentBitmask
 		/// </summary>
 		public UInt64 _componentBitmask;
+
+		public (int, ulong) BitmaskInfo => (_bitmaskFieldId,_componentBitmask);
+
 		readonly AutoResetHandler _autoReset;
 		// 1-based index.
 		public T[] _denseItems;

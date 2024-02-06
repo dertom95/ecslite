@@ -983,7 +983,8 @@ namespace Leopotam.EcsLite {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public IEcsPool GetPoolById(int typeId) {
-			return typeId >= 0 && typeId < _poolsCount ? _pools[typeId] : null;
+			Assert.IsTrue(typeId >= 0 && typeId < _poolsCount);	
+			return _pools[typeId];
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1660,7 +1661,7 @@ namespace Leopotam.EcsLite {
 
 				// I'm using the following two variables to safely read and write the positions of the upper fixed array
 				// it seems that the (de)serializer had problems with the second idx. With this 'data/position-sharing' I could
-				// make it work.
+				// make it work.D
 				[FieldOffset(sizeof(UInt64))]
 				public UInt64 c1;
 				[FieldOffset(2*sizeof(UInt64))]
