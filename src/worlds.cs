@@ -43,6 +43,7 @@ namespace Leopotam.EcsLite {
 		public int entity;
 	}
 
+	
 	public static class HashFunction {
 		private static ulong[] primeNumbers = { 17, 19, 23 };
 
@@ -148,6 +149,22 @@ namespace Leopotam.EcsLite {
 		private Action<EcsWorld,bool, int, int> componentChangeCallback;
 		private Action<EcsWorld,bool,bool, int> entityChangeCallback;
 		private Action<EcsWorld, int, bool, UInt64> tagChangeCallback;
+
+		private List<Action<System.Type,EcsWorld>> worldChangedCallback = new List<Action<System.Type,EcsWorld>>();
+
+		public void AddWorldChangedListener(Action<System.Type,EcsWorld> cb) {
+			worldChangedCallback.Add(cb);
+		}
+
+		public void RemoveWorldChangedListener(Action<System.Type, EcsWorld> cb) {
+			worldChangedCallback.Remove(cb);
+		}
+
+		public void FireComponentResizedCallback(Type componentType, EcsWorld world) {
+			for (int i = 0, iEnd = worldChangedCallback.Count; i < iEnd; i++) {
+				worldChangedCallback[i](componentType, world);
+			}
+		}
 
 		protected bool _destroyed;
 #if LEOECSLITE_WORLD_EVENTS
