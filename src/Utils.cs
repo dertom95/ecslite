@@ -29,14 +29,16 @@ public class GrowableStructArrayIndexOnly<T> where T : unmanaged {
 		count = 0;
 	}
 
-	public void Add(T newData) {
+	public ref T Add(T newData) {
 		Assert.IsNotNull(data, "You need to initialize Data by using the non default construction! GrowableStructArray(capacity)");
 		data[count] = newData;
+		ref T result = ref data[count];
 		count++;
 		if (count == capacity) {
 			capacity *= 2;
 			Array.Resize(ref data, capacity);
 		}
+		return ref result;
 	}
 
 	/// <summary>
@@ -70,7 +72,7 @@ public class GrowableStructArrayIndexOnly<T> where T : unmanaged {
 		data[0] = newTopData;
 	}
 
-	public void Empty() {
+	public void Clear() {
 		count = 0;
 	}
 }
