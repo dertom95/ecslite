@@ -1387,9 +1387,6 @@ namespace Leopotam.EcsLite {
 				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
 								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
 
-				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
-				&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
-
 				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
 			}
