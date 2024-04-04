@@ -136,7 +136,7 @@ namespace Leopotam.EcsLite {
 		protected readonly int _poolDenseSize;
 		protected readonly int _poolRecycledSize;
 		protected readonly Dictionary<Type, IEcsPool> _poolHashes;
-		protected readonly Dictionary<int, EcsFilter> _hashedFilters;
+		protected readonly Dictionary<long, EcsFilter> _hashedFilters;
 		protected readonly List<EcsFilter> _allFilters;
 
 		protected List<EcsFilter>[] _filtersByIncludedComponents;
@@ -234,7 +234,7 @@ namespace Leopotam.EcsLite {
 			_poolsCount = 0;
 			// filters.
 			capacity = cfg.Filters > 0 ? cfg.Filters : Config.FiltersDefault;
-			_hashedFilters = new Dictionary<int, EcsFilter>(capacity);
+			_hashedFilters = new Dictionary<long, EcsFilter>(capacity);
 			_allFilters = new List<EcsFilter>(capacity);
 			// masks.
 			_masks = new Mask[64];
@@ -1445,6 +1445,7 @@ namespace Leopotam.EcsLite {
 				public void Clear() {
 					tagMaskSet = 0;
 					tagMaskNotSet = 0;
+					tagMaskSomeSet = 0;
 					for (int i=0,iEnd=ENTITYDATA_AMOUNT_COMPONENT_BITMASKS * 2; i < iEnd; i++) {
 						componentMasks[i] = 0;
 					}
@@ -1609,17 +1610,24 @@ namespace Leopotam.EcsLite {
 				if (_built) { throw new Exception("Cant change built mask."); }
 				_built = true;
 #endif
+				Hash = 1;
 				Array.Sort(Include, 0, IncludeCount);
 				Array.Sort(Exclude, 0, ExcludeCount);
 				// calculate hash.
-				Hash = IncludeCount + ExcludeCount;
+				Hash = unchecked(Hash * 314159 + IncludeCount);
+				Hash = unchecked(Hash * 314159 + ExcludeCount);
 
 				// take tagMasks into account for hash-calculation
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskNotSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSomeSet.GetHashCode());
+				Assert.AreEqual(4, bitmaskData.componentMasks.Length, "This HashAlgorithm expects componentMasks for Length 4(2 inc, 2 exc). Please modify accordingly");
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[0].GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[1].GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[2].GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[3].GetHashCode());
 				Type type = typeof(T);
-				Hash = unchecked(Hash * 314159 + type.GetHashCode());
+				Hash = unchecked(Hash * 314159 + type.Name.GetHashCode());
 
 				for (int i = 0, iMax = IncludeCount; i < iMax; i++) {
 					Hash = unchecked(Hash * 314159 + Include[i]);
@@ -1628,7 +1636,9 @@ namespace Leopotam.EcsLite {
 					Hash = unchecked(Hash * 314161 + Exclude[i]);
 				}
 				var (filter, isNew) = _world.GetFilterInternal<T>(this, capacity);
-				if (!isNew) { Recycle(); }
+				if (!isNew) { 
+					Recycle(); 
+				}
 				return filter;
 			}
 
