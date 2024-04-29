@@ -400,8 +400,15 @@ namespace Leopotam.EcsLite {
 #if ECS_INT_PACKED
 			entity = PackEntity(entity, (int)gen);
 #endif
+		
 			if (entityChangeCallback != null) {
 				entityChangeCallback(this,false,true, entity); // tell callback this entity is being created
+			}
+
+			bool changed = OnEntityTagChangeInternal(entity, entityTypeWithTags, 0);
+			if (changed && tagChangeCallback != null) {
+				// tell the callback the bits that got wiped
+				tagChangeCallback(this, entity, true, entityTypeWithTags & MASK_TAG_ENTITY_TYPE_INV);
 			}
 			return entity;
 		}
@@ -1222,11 +1229,11 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		/// <param name="entity"></param>
 		/// <param name="newMask"></param>
-		private bool OnEntityTagChangeInternal(int packedEntity, UInt64 newMask) {
+		private bool OnEntityTagChangeInternal(int packedEntity, UInt64 newMask, UInt64 oldBitMask = UInt64.MaxValue) {
 			int rawEntity = EcsWorld.GetPackedRawEntityId(packedEntity);
 			ref EntityData entityData = ref Entities[rawEntity];
-			UInt64 oldBitmask = entityData.bitmask.tagBitMask;
-			if (oldBitmask == newMask) {
+			oldBitMask = oldBitMask == UInt64.MaxValue ? entityData.bitmask.tagBitMask : oldBitMask;
+			if (oldBitMask == newMask) {
 				// nothing to change
 				return false;
 			}
@@ -1237,8 +1244,10 @@ namespace Leopotam.EcsLite {
 			// check filters from which we potentially need to remove this entity
 			for (int i = 0; i < taggedFilterAmount; i++) {
 				ref TaggedFilter filterData = ref _filtersByTagMask[i];
-
-				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, ref entityData.bitmask, oldBitmask);
+				if (oldBitMask==0 && filterData.filter.name== "filter_allSettlers") {
+					int a = 0;
+				}
+				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, ref entityData.bitmask, oldBitMask);
 				if (maskCompatible) {
 					// this entity is in this filter!
 					// what we know:
