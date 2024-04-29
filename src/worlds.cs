@@ -1244,9 +1244,6 @@ namespace Leopotam.EcsLite {
 			// check filters from which we potentially need to remove this entity
 			for (int i = 0; i < taggedFilterAmount; i++) {
 				ref TaggedFilter filterData = ref _filtersByTagMask[i];
-				if (oldBitMask==0 && filterData.filter.name== "filter_allSettlers") {
-					int a = 0;
-				}
 				bool maskCompatible = IsMaskCompatible(ref filterData.filterBitMaskData, ref entityData.bitmask, oldBitMask);
 				if (maskCompatible) {
 					// this entity is in this filter!
