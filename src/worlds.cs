@@ -125,6 +125,9 @@ namespace Leopotam.EcsLite {
 		[UnityEngine.Tooltip("dont use! Use Property WorldIdx")]
 		public int _worldIdx;
 
+		public int _EntitiesCount => _entitiesCount;
+		public int _RecycledEntitiesCount => _recycledEntitiesCount;
+
 
 #endif
 		public EntityData[] Entities;
