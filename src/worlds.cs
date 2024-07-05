@@ -76,17 +76,24 @@ namespace Leopotam.EcsLite {
 
 		public const int ENTITYDATA_AMOUNT_COMPONENT_BITMASKS = 2;
 
-		public const int ENTITYID_MASK_ENTITY = 0b00000000001111111111111111111111;
-		public const int ENTITYID_MASK_GEN = 0b00000011110000000000000000000000;
-		public const int ENTITYID_MASK_WORLD = 0b01111100000000000000000000000000;
-		public const int ENTITYID_SHIFT_GEN = 22;
+		public const int ENTITYID_SHIFT_GEN = 19;
 		public const int ENTITYID_SHIFT_WORLD = 26;
+
+		public const int ENTITYID_MASK_ENTITY = 0b1111111111111111111; // 19 bit raw entity ids
+		public const int ENTITYID_MASK_GEN = (0b1111111) << ENTITYID_SHIFT_GEN;
+		public const int ENTITYID_MASK_WORLD = (0b11111) << ENTITYID_SHIFT_WORLD;
 
 		public const UInt64 TAGFILTERMASK_ENTITY_TYPE = 0b1111;
 
 		public const int MAX_WORLDS = (1 << 5) - 1;
-		public const int MAX_GEN = (1 << 4) - 1;
-		public const int MAX_ENTITIES = (1 << 22) - 1;
+		public const int MAX_GEN = (1 << 7) - 1;
+		public const int MAX_ENTITIES = (1 << 19) - 1;
+
+		/// <summary>
+		/// Amount of recycled entities that needs to be in the RecycledQueue before the system is
+		/// actually using those to prevent a single entity to get potentially stressed by newEntity/DelEntity iterations
+		/// </summary>
+		public const int MIN_RECYCLED_TO_RECYCLE = 10; 
 
 		public static EcsWorld[] worlds = new EcsWorld[MAX_WORLDS];
 
@@ -132,7 +139,7 @@ namespace Leopotam.EcsLite {
 #endif
 		public EntityData[] Entities;
 		public int _entitiesCount;
-		public int[] _recycledEntities;
+		public Queue<int> _recycledEntities;
 		public int _recycledEntitiesCount;
 		public IEcsPool[] _pools;
 		public int _poolsCount;
@@ -222,7 +229,7 @@ namespace Leopotam.EcsLite {
 			var capacity = cfg.Entities > 0 ? cfg.Entities : Config.EntitiesDefault;
 			Entities = new EntityData[capacity];
 			capacity = cfg.RecycledEntities > 0 ? cfg.RecycledEntities : Config.RecycledEntitiesDefault;
-			_recycledEntities = new int[capacity];
+			_recycledEntities = new Queue<int>();
 			_entitiesCount = 0;
 			_recycledEntitiesCount = 0;
 			// pools.
@@ -360,8 +367,8 @@ namespace Leopotam.EcsLite {
 
 			int entity;
 			uint gen = 0;
-			if (_recycledEntitiesCount > 0) {
-				entity = _recycledEntities[--_recycledEntitiesCount];
+			if (_recycledEntities.Count >= MIN_RECYCLED_TO_RECYCLE) {
+				entity = _recycledEntities.Dequeue();
 				ref var entityData = ref Entities[entity];
 				entityData.ReactiveDestroyed();
 				gen = entityData.Gen;
@@ -702,6 +709,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int PackEntity(int plainEntity) {
 			int gen = (int)GetEntityGen(plainEntity) << ENTITYID_SHIFT_GEN;
+			Assert.IsTrue(plainEntity < MAX_ENTITIES,$"Entities out of bounds! {plainEntity} < {MAX_ENTITIES}");
 			int packedEntity = worldBitmask | gen | plainEntity;
 			return packedEntity;
 		}
@@ -872,14 +880,16 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		public bool IsEntityValid(int packedEntity) {
-			bool result = ((packedEntity & ENTITYID_MASK_WORLD) == worldBitmask) // entity from this world?
+			bool result = IsAlive() 
+							&& ((packedEntity & ENTITYID_MASK_WORLD) == worldBitmask) // entity from this world?
 					// && (GetEntityGen(packedEntity) == GetEntityGen(packedEntity)) // same generation as it should have | DONE in IsEntityAlive
 					&& IsEntityAliveInternal(packedEntity);
 			return result;
-		}
+		}  
 
 		[System.Diagnostics.Conditional("DEBUG")]
 		public void AssertIsEntityValid(int packedEntity) {
+			Assert.IsTrue(IsAlive(), "ECSWorld already destroyed");
 			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD),worldBitmask,"Entity-World mismatch!");
 			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,"Generation mismatch!");
 			Assert.IsTrue(IsEntityAliveInternal(packedEntity), "Entity not alive!");
@@ -939,10 +949,7 @@ namespace Leopotam.EcsLite {
 			// entityData.Gen = (uint)(-(entityData.Gen + 1));
 			entityData.Destroy();
 
-			if (_recycledEntitiesCount == _recycledEntities.Length) {
-				Array.Resize(ref _recycledEntities, _recycledEntitiesCount << 1);
-			}
-			_recycledEntities[_recycledEntitiesCount++] = entity;
+			_recycledEntities.Enqueue(entity);
 #if DEBUG && LEOECSLITE_WORLD_EVENTS
 			for (int ii = 0, iMax = _eventListeners.Count; ii < iMax; ii++) {
 				_eventListeners[ii].OnEntityDestroyed (entity);
@@ -1715,15 +1722,14 @@ namespace Leopotam.EcsLite {
 				}
 			}
 
+			public const uint MASK_GEN = (0b1111111) << 0;
+			public const uint MASK_HAS_COMPONENTS = (1 << 7);
+			public const uint MASK_DESTROYED = (1 << 8);
 
-
-
-			public const uint MASK_GEN = 0b0000000000000000000000001111;
-			public const uint MASK_HAS_COMPONENTS = (1 << 4);
-			public const uint MASK_DESTROYED = (1 << 5);
-			// bit 01-04 gen
-			// bit 05    has components
-			// bit 06-32 unused
+			// bit 00-06 gen
+			// bit 07    has components
+			// bit 08    destroyed
+			// bit 09-31 [free to use]
 			public UInt32 entityInfo;
 
 			public unsafe EntityDataBitmask bitmask;
@@ -1743,6 +1749,10 @@ namespace Leopotam.EcsLite {
 
 				entityInfo &= ~(MASK_GEN); // clear GEN-bits
 				entityInfo |= newGen;      // set value
+
+				if (newGen == 0) {
+
+				}
 			}
 
 			public void ReactiveDestroyed() {
