@@ -850,6 +850,18 @@ namespace Leopotam.EcsLite {
 		}
 
 		/// <summary>
+		/// Check if the world of an entity is still alive (without throwing any asserts)
+		/// </summary>
+		/// <param name="packedEntity"></param>
+		/// <returns></returns>
+		public static bool IsEntityWorldAlive(int packedEntity) {
+			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			ref EcsWorld world = ref worlds[worldId - 1];
+			bool isAlive = world != null && world.IsAlive();
+			return isAlive;
+		}
+
+		/// <summary>
 		/// Get packed world as base-class EcsWorld
 		/// </summary>
 		/// <param name="packedEntity"></param>
