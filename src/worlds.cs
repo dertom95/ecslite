@@ -132,8 +132,8 @@ namespace Leopotam.EcsLite {
 		[UnityEngine.Tooltip("dont use! Use Property WorldIdx")]
 		public int _worldIdx;
 
-		public int _EntitiesCount => _entitiesCount;
-		public int _RecycledEntitiesCount => _recycledEntitiesCount;
+		public int _EntitiesCount => _entitiesCount - _recycledEntities.Count;
+		public int _RecycledEntitiesCount => _recycledEntities.Count;
 
 
 #endif
@@ -1044,7 +1044,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		public int GetAllEntities(ref int[] entities) {
-			var count = _entitiesCount - _recycledEntitiesCount;
+			var count = _entitiesCount - _recycledEntities.Count;
 			if (entities == null || entities.Length < count) {
 				entities = new int[count];
 			}
