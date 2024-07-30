@@ -393,6 +393,7 @@ namespace Leopotam.EcsLite {
 #endif
 				}
 				entity = _entitiesCount++;
+				Assert.IsTrue(entity <= MAX_ENTITIES, $"Exceeded entityamount:{entity}");
 				gen = 0; // we start with generation 0
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
 				Entities[entity].ReactiveDestroyed();
@@ -1762,9 +1763,9 @@ namespace Leopotam.EcsLite {
 				entityInfo &= ~(MASK_GEN); // clear GEN-bits
 				entityInfo |= newGen;      // set value
 
-				if (newGen == 0) {
-
-				}
+				//if (newGen == 0) {
+				//	int a = 0;
+				//}
 			}
 
 			public void ReactiveDestroyed() {
