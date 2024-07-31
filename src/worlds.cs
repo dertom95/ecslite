@@ -722,6 +722,10 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsPacked(int entity) {
+			if (entity == 0) {
+				return false;
+			}
+			// that is not really a good check
 			int worldIdx = GetPackedWorldID(entity);
 			return worldIdx != 0;
 		}
@@ -856,7 +860,8 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		public static bool IsEntityWorldAlive(int packedEntity) {
-			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
+			Assert.IsTrue(IsPacked(packedEntity));
+			int worldId = GetPackedWorldID(packedEntity);
 			ref EcsWorld world = ref worlds[worldId - 1];
 			bool isAlive = world != null && world.IsAlive();
 			return isAlive;
@@ -869,8 +874,12 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref EcsWorld GetPackedWorld(int packedEntity, bool enforceValidEntities=true) {
-			int worldId = (packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD;
-			ref EcsWorld world = ref worlds[worldId-1];
+			Assert.AreNotEqual(0, packedEntity, "0 entity not allowed for GetPackedWorld");
+			Assert.IsTrue(IsPacked(packedEntity),"need packed entity");
+			int worldId = GetPackedWorldID(packedEntity);
+			int idx = worldId - 1;
+			Assert.IsTrue(idx < worlds.Length,$"worldIdx[{idx}] must be < worlds.length[{worlds.Length}]. PackedEntity[{packedEntity}]");
+			ref EcsWorld world = ref worlds[idx];
 			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
 
 #if EZ_SANITY_CHECK
@@ -1160,16 +1169,16 @@ namespace Leopotam.EcsLite {
 		/// Needs to be called with unpacked entity 
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool IsEntityAliveInternal(int packedEntity) {
-			uint ecsGen = GetEntityGen(packedEntity);
-			if (IsPacked(packedEntity)) {
-				uint packedGen = EcsWorld.GetPackedGen(packedEntity);
+		public bool IsEntityAliveInternal(int packedOrRawEntity) {
+			uint ecsGen = GetEntityGen(packedOrRawEntity);
+			if (IsPacked(packedOrRawEntity)) {
+				uint packedGen = EcsWorld.GetPackedGen(packedOrRawEntity);
 				if (ecsGen != packedGen) {
 					return false;
 				}
 			}
 
-			int entity = GetPackedRawEntityId(packedEntity);
+			int entity = GetPackedRawEntityId(packedOrRawEntity);
 			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 		}
 
