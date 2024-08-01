@@ -492,6 +492,9 @@ namespace Leopotam.EcsLite {
 		/// <param name="tag1">tag to be set</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void AddTag(int packedEntity, UInt64 tag1) {
+			Assert.IsTrue(IsPacked(packedEntity), $"entity[{packedEntity}] not packed");
+			AssertIsEntityValid(packedEntity);
+
 			// TODO: Check if tag is not set at all!?
 			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV),"Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
 			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
@@ -1179,7 +1182,22 @@ namespace Leopotam.EcsLite {
 			}
 
 			int entity = GetPackedRawEntityId(packedOrRawEntity);
-			return entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
+			bool result = entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
+#if EZ_SANITY_CHECK
+			if (!result) {
+				try {
+					string destroyed = "entity > Entities.Length";
+					if (entity < Entities.Length) {
+						destroyed = Entities[entity].Destroyed ? "destroyed" : "not destroyed";
+					}
+					UnityEngine.Debug.LogWarning($"Entity[raw:{entity} packedOrRawEntity:{packedOrRawEntity}] not alive: entity[{entity}] >= 0 && entity[{entity} < _entitiesCount[{_entitiesCount}] && !Entities[entity].Destroyed [{destroyed}]");
+				}
+				catch(Exception e) {
+					UnityEngine.Debug.LogException(e);
+				}
+			}
+#endif
+			return result;
 		}
 
 		public void ClearFiltersFromChangedFlag() {
