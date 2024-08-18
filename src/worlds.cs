@@ -942,7 +942,7 @@ namespace Leopotam.EcsLite {
 #endif
 			ref EntityData entityData = ref Entities[entity];
 
-#if EZ_QUICKFIX
+#if EZ_TRYCATCHMODE
 			if (entityData.Destroyed) {
 				UnityEngine.Debug.LogWarning($"ERROR: Tried to destroy already destroyed entity:{packedEntity} ! QuickFix:Exit!");
 				return;
