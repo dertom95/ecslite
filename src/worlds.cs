@@ -1199,11 +1199,11 @@ namespace Leopotam.EcsLite {
 					UnityEngine.Debug.LogWarning($"Entity[raw:{entity} packedOrRawEntity:{packedOrRawEntity}] not alive: entity[{entity}] >= 0 && entity[{entity} < _entitiesCount[{_entitiesCount}] && !Entities[entity].Destroyed [{destroyed}]");
 				}
 				catch(Exception e) {
-					UnityEngine.Debug.LogException(e);
+					UnityEngine.Debug.LogWarning($"Error in logging invalid entity[{entity}]!\n{e.Message}\n{e.StackTrace}\n");
 				}
 			}
 #endif
-			return result;
+					return result;
 		}
 
 		public void ClearFiltersFromChangedFlag() {
