@@ -940,10 +940,16 @@ namespace Leopotam.EcsLite {
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (entity < 0 || entity >= _entitiesCount) { throw new Exception("Cant touch destroyed entity."); }
 #endif
-			ref var entityData = ref Entities[entity];
-#if EZ_SANITY_CHECK
+			ref EntityData entityData = ref Entities[entity];
+
+#if EZ_QUICKFIX
 			if (entityData.Destroyed) {
-				throw new Exception("Tried to destroy already destroyed entity");
+				UnityEngine.Debug.LogWarning($"ERROR: Tried to destroy already destroyed entity:{packedEntity} ! QuickFix:Exit!");
+				return;
+			}
+#elif EZ_SANITY_CHECK
+			if (entityData.Destroyed) {
+				throw new Exception($"Tried to destroy already destroyed entity: {packedEntity}");
 			}
 #endif
 			// kill components.
