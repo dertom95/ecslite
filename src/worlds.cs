@@ -916,8 +916,8 @@ namespace Leopotam.EcsLite {
 		public void AssertIsEntityValid(int packedEntity) {
 			Assert.IsTrue(IsAlive(), "ECSWorld already destroyed");
 			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD),worldBitmask,"Entity-World mismatch!");
-			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,"Generation mismatch!");
 			Assert.IsTrue(IsEntityAliveInternal(packedEntity), "Entity not alive!");
+			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,"Generation mismatch!");
 		}
 
 
@@ -1183,6 +1183,9 @@ namespace Leopotam.EcsLite {
 			if (IsPacked(packedOrRawEntity)) {
 				uint packedGen = EcsWorld.GetPackedGen(packedOrRawEntity);
 				if (ecsGen != packedGen) {
+#if EZ_SANITY_CHECK
+					UnityEngine.Debug.LogWarning($"Entity[packedOrRawEntity:{packedOrRawEntity}] not alive: gen mismatch: packedGen:{packedGen} currentGen:{ecsGen}");
+#endif
 					return false;
 				}
 			}
