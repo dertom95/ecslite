@@ -956,10 +956,11 @@ namespace Leopotam.EcsLite {
 
 #if EZ_TRYCATCHMODE
 			if (entityData.Destroyed) {
-				UnityEngine.Debug.LogWarning($"ERROR: Tried to destroy already destroyed entity:{packedEntity} ! QuickFix:Exit!");
+				string warning = $"ERROR: Tried to destroy already destroyed entity:{packedEntity} ! QuickFix:Exit!";
 #if EZ_USE_ENTITY_HISTORY
-				UnityEngine.Debug.LogWarning($"       Entity[{packedEntity}] was before {GetLastEntityTypeAndTag(packedEntity)} ");
+				warning += $"\n       Entity[{packedEntity}] was before {GetLastEntityTypeAndTag(packedEntity)&MASK_TAG_ENTITY_TYPE} with  Tags:{GetLastEntityTypeAndTag(packedEntity) & MASK_TAG_ENTITY_TYPE_INV}";
 #endif
+				UnityEngine.Debug.LogWarning(warning);
 				return;
 			}
 #elif EZ_SANITY_CHECK
@@ -1199,7 +1200,11 @@ namespace Leopotam.EcsLite {
 				uint packedGen = EcsWorld.GetPackedGen(packedOrRawEntity);
 				if (ecsGen != packedGen) {
 #if EZ_SANITY_CHECK
-					UnityEngine.Debug.LogWarning($"Entity[packedOrRawEntity:{packedOrRawEntity}] not alive: gen mismatch: packedGen:{packedGen} currentGen:{ecsGen}");
+					string warning = $"Entity[packedOrRawEntity:{packedOrRawEntity}] not alive: gen mismatch: packedGen:{packedGen} currentGen:{ecsGen}";
+#if EZ_USE_ENTITY_HISTORY
+					warning += $"\n   was before { GetLastEntityTypeAndTag(packedOrRawEntity) & MASK_TAG_ENTITY_TYPE} with Tags:{ GetLastEntityTypeAndTag(packedOrRawEntity) & MASK_TAG_ENTITY_TYPE_INV}";
+#endif
+					UnityEngine.Debug.LogWarning(warning);
 #endif
 					return false;
 				}
