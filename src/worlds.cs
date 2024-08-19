@@ -362,6 +362,12 @@ namespace Leopotam.EcsLite {
 			return ref Entities[rawEntity];
 		}
 
+#if EZ_USE_ENTITY_HISTORY
+		public ulong GetLastEntityTypeAndTag(int packedEntity) {
+			ref EntityData entityData = ref GetEntityData(packedEntity);
+			return entityData.lastInitialEntityTypeWithTag;
+		}
+#endif
 		public int NewEntity(ulong entityTypeWithTags = 0) {
 			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
 
@@ -374,6 +380,9 @@ namespace Leopotam.EcsLite {
 				gen = entityData.Gen;
 				// set the entityType as initial bitmask, only having the entityType and no tags attached
 				entityData.bitmask.tagBitMask = entityTypeWithTags;
+#if EZ_USE_ENTITY_HISTORY
+				entityData.lastInitialEntityTypeWithTag = entityTypeWithTags;
+#endif
 			} else {
 				// new entity.
 				if (_entitiesCount == Entities.Length) {
@@ -398,7 +407,10 @@ namespace Leopotam.EcsLite {
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
 				Entities[entity].ReactiveDestroyed();
 				Entities[entity].bitmask.tagBitMask = entityTypeWithTags;
-				
+#if EZ_USE_ENTITY_HISTORY
+				Entities[entity].lastInitialEntityTypeWithTag = entityTypeWithTags;
+#endif
+
 			}
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			_leakedEntities.Add(entity);
@@ -945,6 +957,9 @@ namespace Leopotam.EcsLite {
 #if EZ_TRYCATCHMODE
 			if (entityData.Destroyed) {
 				UnityEngine.Debug.LogWarning($"ERROR: Tried to destroy already destroyed entity:{packedEntity} ! QuickFix:Exit!");
+#if EZ_USE_ENTITY_HISTORY
+				UnityEngine.Debug.LogWarning($"       Entity[{packedEntity}] was before {GetLastEntityTypeAndTag(packedEntity)} ");
+#endif
 				return;
 			}
 #elif EZ_SANITY_CHECK
@@ -1783,6 +1798,12 @@ namespace Leopotam.EcsLite {
 
 			public unsafe EntityDataBitmask bitmask;
 
+#if EZ_USE_ENTITY_HISTORY
+			/// <summary>
+			/// keep what entitytype this entity was last time it was created via NewEntity(...)
+			/// </summary>
+			public ulong lastInitialEntityTypeWithTag;
+#endif
 
 			public void Destroy() {
 #if EZ_SANITY_CHECK
