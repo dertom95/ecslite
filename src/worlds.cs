@@ -890,14 +890,14 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref EcsWorld GetPackedWorld(int packedEntity, bool enforceValidEntities=true) {
 			Assert.AreNotEqual(0, packedEntity, "0 entity not allowed for GetPackedWorld");
-			Assert.IsTrue(IsPacked(packedEntity),"need packed entity");
+			Assert.IsTrue(IsPacked(packedEntity),$"need packed entity got [{packedEntity}]");
 			int worldId = GetPackedWorldID(packedEntity);
 			int idx = worldId - 1;
 			Assert.IsTrue(idx < worlds.Length,$"worldIdx[{idx}] must be < worlds.length[{worlds.Length}]. PackedEntity[{packedEntity}]");
 			ref EcsWorld world = ref worlds[idx];
 			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
 
-#if EZ_SANITY_CHECK
+#if EZ_SANITY_CHECK 
 			if (enforceValidEntities) {
 				// check if generation of the packed entity fit with the generation of this entity in the ecs.
 				// If there is a mismatch this means that we stored a destroyed entity somewhere!
@@ -928,8 +928,8 @@ namespace Leopotam.EcsLite {
 		public void AssertIsEntityValid(int packedEntity) {
 			Assert.IsTrue(IsAlive(), "ECSWorld already destroyed");
 			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD),worldBitmask,"Entity-World mismatch!");
-			Assert.IsTrue(IsEntityAliveInternal(packedEntity), "Entity not alive!");
-			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,"Generation mismatch!");
+			Assert.IsTrue(IsEntityAliveInternal(packedEntity), $"Entity[{packedEntity}] not alive!");
+			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,$"Entity[{packedEntity}]: Generation mismatch!");
 		}
 
 
