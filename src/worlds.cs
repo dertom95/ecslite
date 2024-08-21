@@ -1194,7 +1194,7 @@ namespace Leopotam.EcsLite {
 		/// Needs to be called with unpacked entity 
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool IsEntityAliveInternal(int packedOrRawEntity) {
+		public bool IsEntityAliveInternal(int packedOrRawEntity, bool outputWarningOnInvalid=false) {
 			uint ecsGen = GetEntityGen(packedOrRawEntity);
 			if (IsPacked(packedOrRawEntity)) {
 				uint packedGen = EcsWorld.GetPackedGen(packedOrRawEntity);
@@ -1204,7 +1204,9 @@ namespace Leopotam.EcsLite {
 #if EZ_USE_ENTITY_HISTORY
 					warning += $"\n   was before { GetLastEntityTypeAndTag(packedOrRawEntity) & MASK_TAG_ENTITY_TYPE} with Tags:{ GetLastEntityTypeAndTag(packedOrRawEntity) & MASK_TAG_ENTITY_TYPE_INV}";
 #endif
-					UnityEngine.Debug.LogWarning(warning);
+					if (outputWarningOnInvalid) {
+						UnityEngine.Debug.LogWarning(warning);
+					}
 #endif
 					return false;
 				}
@@ -1213,7 +1215,7 @@ namespace Leopotam.EcsLite {
 			int entity = GetPackedRawEntityId(packedOrRawEntity);
 			bool result = entity >= 0 && entity < _entitiesCount && !Entities[entity].Destroyed;
 #if EZ_SANITY_CHECK
-			if (!result) {
+			if (!result && outputWarningOnInvalid) {
 				try {
 					string destroyed = "entity > Entities.Length";
 					if (entity < Entities.Length) {
