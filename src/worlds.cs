@@ -875,7 +875,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		public static bool IsEntityWorldAlive(int packedEntity) {
-			Assert.IsTrue(IsPacked(packedEntity));
+			Assert.IsTrue(IsPacked(packedEntity),$"Entity[{packedEntity}] not packed");
 			int worldId = GetPackedWorldID(packedEntity);
 			ref EcsWorld world = ref worlds[worldId - 1];
 			bool isAlive = world != null && world.IsAlive();
