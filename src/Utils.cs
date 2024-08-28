@@ -30,7 +30,7 @@ public class GrowableStructArrayIndexOnly<T> where T : unmanaged {
 	}
 
 	public ref T Add(T newData) {
-		Assert.IsNotNull(data, "You need to initialize Data by using the non default construction! GrowableStructArray(capacity)");
+		Assert.IsNotNull(data/*, "You need to initialize Data by using the non default construction! GrowableStructArray(capacity)"*/);
 		data[count] = newData;
 		ref T result = ref data[count];
 		count++;

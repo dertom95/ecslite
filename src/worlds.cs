@@ -111,7 +111,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="idx"></param>
 		/// <param name="world"></param>
 		protected static void RegisterWorlds(int idx, EcsWorld world) {
-			Assert.IsTrue(idx < MAX_WORLDS, $"You added more worlds than supported({MAX_WORLDS})");
+			Assert.IsTrue(idx < MAX_WORLDS/*, $"You added more worlds than supported({MAX_WORLDS})"*/);
 			worlds[idx] = world;
 		}
 
@@ -265,7 +265,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		public void Destroy() {
-			Assert.IsTrue(IsAlive(), "Tried to destroy an already destroyed ecsworld");
+			Assert.IsTrue(IsAlive()/*, "Tried to destroy an already destroyed ecsworld"*/);
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 			if (CheckForLeakedEntities()) { throw new Exception($"Empty entity detected before EcsWorld.Destroy()."); }
 #endif
@@ -369,7 +369,7 @@ namespace Leopotam.EcsLite {
 		}
 #endif
 		public int NewEntity(ulong entityTypeWithTags = 0) {
-			Assert.IsTrue(IsAlive(), "Tried to add newEntity on destroyed world");
+			Assert.IsTrue(IsAlive()/*, "Tried to add newEntity on destroyed world"*/);
 
 			int entity;
 			uint gen = 0;
@@ -402,7 +402,7 @@ namespace Leopotam.EcsLite {
 #endif
 				}
 				entity = _entitiesCount++;
-				Assert.IsTrue(entity <= MAX_ENTITIES, $"Exceeded entityamount:{entity}");
+				Assert.IsTrue(entity <= MAX_ENTITIES/*, $"Exceeded entityamount:{entity}"*/);
 				gen = 0; // we start with generation 0
 						 // set the entityType as initial bitmask, only having the entityType and no tags attached
 				Entities[entity].ReactiveDestroyed();
@@ -463,7 +463,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="setMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private void AddMultiTagMask(int packedEntity, UInt64 setMask) {
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask), "EntityType does not match with Tag!");
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask)/*, "EntityType does not match with Tag!"*/);
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
@@ -504,12 +504,12 @@ namespace Leopotam.EcsLite {
 		/// <param name="tag1">tag to be set</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void AddTag(int packedEntity, UInt64 tag1) {
-			Assert.IsTrue(IsPacked(packedEntity), $"entity[{packedEntity}] not packed");
+			Assert.IsTrue(IsPacked(packedEntity)/*, $"entity[{packedEntity}] not packed"*/);
 			AssertIsEntityValid(packedEntity);
 
 			// TODO: Check if tag is not set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV),"Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
 			// for now use the multiTag version
 			AddMultiTagMask(packedEntity, tag1);
 		}
@@ -523,10 +523,10 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void AddTag(int packedEntity, UInt64 tag1, UInt64 tag2) {
 			// TODO: Check if tag is not set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2)/*, "Tag2 not compatible for entity"*/);
 
 
 			// for now use the multiTag version
@@ -546,12 +546,12 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void AddTag(int packedEntity, UInt64 tag1, UInt64 tag2, UInt64 tag3) {
 			// TODO: Check if tag is not set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag3 & MASK_TAG_ENTITY_TYPE_INV), "Tag3: Tried to set multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3), "Tag3 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag2: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag3 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag3: Tried to set multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2)/*, "Tag2 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3)/*, "Tag3 not compatible for entity"*/);
 
 			// for now use the multiTag version
 			//AddMultiTagMask(packedEntity, tag1 | tag2 | tag3);
@@ -614,7 +614,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="setMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void SetTagMask(int packedEntity, UInt64 setMask) {
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask), "Tag not compatible to EntityType");
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, setMask)/*, "Tag not compatible to EntityType"*/);
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
@@ -644,7 +644,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="unsetMask"></param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]/// 
 		public void _UnsetTagMask(int packedEntity, UInt64 unsetMask) {
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, unsetMask), "Tag not compatible to EntityType");
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, unsetMask)/*, "Tag not compatible to EntityType"*/);
 
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 
@@ -666,8 +666,8 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void RemoveTag(int packedEntity, UInt64 tag1) {
 			// TODO: Check if tag is set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
 
 			// TODO: write optimizied code to only check filters that have this tag involved
 			// for now using multicheck. 
@@ -682,10 +682,10 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void RemoveTag(int packedEntity, UInt64 tag1, UInt64 tag2) {
 			// TODO: Check if tag is set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2)/*, "Tag2 not compatible for entity"*/);
 
 			RemoveTag(packedEntity, tag1);
 			RemoveTag(packedEntity, tag2);
@@ -705,12 +705,12 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void RemoveTag(int packedEntity, UInt64 tag1, UInt64 tag2, UInt64 tag3) {
 			// TODO: Check if tag is set at all!?
-			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV), "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV), "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsPowerOfTwo(tag3 & MASK_TAG_ENTITY_TYPE_INV), "Tag3: Tried to remove multiple tags at once! Don't do this via AddTag(..)");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1), "Tag1 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2), "Tag2 not compatible for entity");
-			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3), "Tag3 not compatible for entity");
+			Assert.IsTrue(IsPowerOfTwo(tag1 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag1: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag2 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag2: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsPowerOfTwo(tag3 & MASK_TAG_ENTITY_TYPE_INV)/*, "Tag3: Tried to remove multiple tags at once! Don't do this via AddTag(..)"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag1)/*, "Tag1 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag2)/*, "Tag2 not compatible for entity"*/);
+			Assert.IsTrue(IsTagAllowedForEntity(packedEntity, tag3)/*, "Tag3 not compatible for entity"*/);
 
 			RemoveTag(packedEntity, tag1);
 			RemoveTag(packedEntity, tag2);
@@ -725,7 +725,7 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int PackEntity(int plainEntity) {
 			int gen = (int)GetEntityGen(plainEntity) << ENTITYID_SHIFT_GEN;
-			Assert.IsTrue(plainEntity < MAX_ENTITIES,$"Entities out of bounds! {plainEntity} < {MAX_ENTITIES}");
+			Assert.IsTrue(plainEntity < MAX_ENTITIES/*, $"Entities out of bounds! {plainEntity} < {MAX_ENTITIES}"*/);
 			int packedEntity = worldBitmask | gen | plainEntity;
 			return packedEntity;
 		}
@@ -759,7 +759,7 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static (int, int, uint) UnpackEntity(int packedEntity) {
-			Assert.IsTrue(IsPacked(packedEntity), "UnpackEntity needs packed entities");
+			Assert.IsTrue(IsPacked(packedEntity)/*, "UnpackEntity needs packed entities"*/);
 
 			// due to better inlining, dont using the specialized methods here. 
 			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
@@ -783,7 +783,7 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static (int, T, uint) UnpackEntityWithWorld<T>(int packedEntity) where T : EcsWorld {
-			Assert.IsTrue(IsPacked(packedEntity), "UnpackEntityWithWorld needs packed entities");
+			Assert.IsTrue(IsPacked(packedEntity)/*, "UnpackEntityWithWorld needs packed entities"*/);
 
 			// due to better inlining, dont using the specialized methods here. 
 			int rawEntity = packedEntity & ENTITYID_MASK_ENTITY;
@@ -810,7 +810,7 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static uint GetPackedGen(int packedEntity) {
-			Assert.IsTrue(IsPacked(packedEntity), "GetPackedGen needs packed entities");
+			Assert.IsTrue(IsPacked(packedEntity)/*, "GetPackedGen needs packed entities"*/);
 
 			uint gen = (uint)(packedEntity & ENTITYID_MASK_GEN) >> ENTITYID_SHIFT_GEN;
 			return gen;
@@ -846,7 +846,7 @@ namespace Leopotam.EcsLite {
 		/// <returns></returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static T GetPackedWorld<T>(int packedEntity) where T : EcsWorld {
-			Assert.IsTrue(IsPacked(packedEntity), "GetPackedWorld needs packed entities");
+			Assert.IsTrue(IsPacked(packedEntity)/*, "GetPackedWorld needs packed entities"*/);
 			int worldId = ((packedEntity & ENTITYID_MASK_WORLD) >> ENTITYID_SHIFT_WORLD) - 1;
 			ref EcsWorld _world = ref worlds[worldId];
 #if EZ_SANITY_CHECK
@@ -855,7 +855,7 @@ namespace Leopotam.EcsLite {
 #endif
 
 			T world = UnsafeUtility.As<EcsWorld, T>(ref _world);
-			Assert.IsNotNull(world,$"world with idx:{worldId} is null!");
+			Assert.IsNotNull(world/*, $"world with idx:{worldId} is null!"*/);
 #if EZ_SANITY_CHECK
 			// check if generation of the packed entity fit with the generation of this entity in the ecs.
 			// If there is a mismatch this means that we stored a destroyed entity somewhere!
@@ -875,7 +875,7 @@ namespace Leopotam.EcsLite {
 		/// <param name="packedEntity"></param>
 		/// <returns></returns>
 		public static bool IsEntityWorldAlive(int packedEntity) {
-			Assert.IsTrue(IsPacked(packedEntity),$"Entity[{packedEntity}] not packed");
+			Assert.IsTrue(IsPacked(packedEntity)/*, $"Entity[{packedEntity}] not packed"*/);
 			int worldId = GetPackedWorldID(packedEntity);
 			ref EcsWorld world = ref worlds[worldId - 1];
 			bool isAlive = world != null && world.IsAlive();
@@ -890,12 +890,12 @@ namespace Leopotam.EcsLite {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static ref EcsWorld GetPackedWorld(int packedEntity, bool enforceValidEntities=true) {
 			Assert.AreNotEqual(0, packedEntity, "0 entity not allowed for GetPackedWorld");
-			Assert.IsTrue(IsPacked(packedEntity),$"need packed entity got [{packedEntity}]");
+			Assert.IsTrue(IsPacked(packedEntity)/*, $"need packed entity got [{packedEntity}]"*/);
 			int worldId = GetPackedWorldID(packedEntity);
 			int idx = worldId - 1;
-			Assert.IsTrue(idx < worlds.Length,$"worldIdx[{idx}] must be < worlds.length[{worlds.Length}]. PackedEntity[{packedEntity}]");
+			Assert.IsTrue(idx < worlds.Length/*, $"worldIdx[{idx}] must be < worlds.length[{worlds.Length}]. PackedEntity[{packedEntity}]"*/);
 			ref EcsWorld world = ref worlds[idx];
-			Assert.IsTrue(world!=null && world.IsAlive(), "World not alive anymore!");
+			Assert.IsTrue(world!=null && world.IsAlive()/*, "World not alive anymore!"*/);
 
 #if EZ_SANITY_CHECK 
 			if (enforceValidEntities) {
@@ -926,10 +926,10 @@ namespace Leopotam.EcsLite {
 
 		[System.Diagnostics.Conditional("DEBUG")]
 		public void AssertIsEntityValid(int packedEntity) {
-			Assert.IsTrue(IsAlive(), "ECSWorld already destroyed");
-			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD),worldBitmask,"Entity-World mismatch!");
-			Assert.IsTrue(IsEntityAliveInternal(packedEntity), $"Entity[{packedEntity}] not alive!");
-			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) ,$"Entity[{packedEntity}]: Generation mismatch!");
+			Assert.IsTrue(IsAlive()/*, "ECSWorld already destroyed"*/);
+			Assert.AreEqual( (packedEntity & ENTITYID_MASK_WORLD), worldBitmask/*, "Entity-World mismatch!"*/);
+			Assert.IsTrue(IsEntityAliveInternal(packedEntity)/*, $"Entity[{packedEntity}] not alive!"*/);
+			Assert.AreEqual(GetEntityGen(packedEntity), EcsWorld.GetPackedGen(packedEntity) /*, $"Entity[{packedEntity}]: Generation mismatch!"*/);
 		}
 
 
@@ -1613,7 +1613,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
 			public Mask TagsSet(UInt64 bitmask) {
-				Assert.AreEqual(0, bitmaskData.tagMaskSet, "TagsSet-Mask can only been set once!");
+				Assert.AreEqual(0, bitmaskData.tagMaskSet/*, "TagsSet-Mask can only been set once!"*/);
 				bitmaskData.tagMaskSet = bitmask;
 				return this;
 			}
@@ -1624,7 +1624,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
 			public Mask TagsNotSet(UInt64 bitmask) {
-				Assert.AreEqual(0, bitmaskData.tagMaskNotSet, "TagsNotSet-Mask can only been set once!");
+				Assert.AreEqual(0, bitmaskData.tagMaskNotSet/*, "TagsNotSet-Mask can only been set once!"*/);
 				// immediately remove entity-type to make it invisible in the notset-check (so we don't need to mask it out on every check)
 				bitmaskData.tagMaskNotSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
 				return this;
@@ -1636,7 +1636,7 @@ namespace Leopotam.EcsLite {
 			/// <param name="bitmask"></param>
 			/// <returns></returns>
 			public Mask TagsSomeSet(UInt64 bitmask) {
-				Assert.AreEqual(0, bitmaskData.tagMaskSomeSet, "TagsSomeSet-Mask can only been set once!");
+				Assert.AreEqual(0, bitmaskData.tagMaskSomeSet/*, "TagsSomeSet-Mask can only been set once!"*/);
 				// immediately remove entity-type to make it invisible in the someset-check (so we don't need to mask it out on every check)
 				bitmaskData.tagMaskSomeSet = bitmask & MASK_TAG_ENTITY_TYPE_INV;
 				return this;
@@ -1708,7 +1708,7 @@ namespace Leopotam.EcsLite {
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskNotSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSomeSet.GetHashCode());
-				Assert.AreEqual(4, bitmaskData.componentMasks.Length, "This HashAlgorithm expects componentMasks for Length 4(2 inc, 2 exc). Please modify accordingly");
+				Assert.AreEqual(4, bitmaskData.componentMasks.Length/*, "This HashAlgorithm expects componentMasks for Length 4(2 inc, 2 exc). Please modify accordingly"*/);
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[0].GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[1].GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[2].GetHashCode());
