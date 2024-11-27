@@ -56,7 +56,9 @@ namespace Leopotam.EcsLite {
 		}
 	}
 
-	public partial class EcsWorld {
+	public interface IEcsWorld { }
+
+	public partial class EcsWorld : IEcsWorld {
 #if ECS_INT_PACKED
 
 		protected struct TaggedFilter {
