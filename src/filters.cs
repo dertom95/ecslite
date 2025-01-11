@@ -76,6 +76,14 @@ namespace Leopotam.EcsLite {
 		public bool DataChanged => dataChanged;
 		public void Reset() => dataChanged = false;
 
+		private bool destroyed;
+		public bool Destroyed => destroyed;
+
+		public virtual void Destroy() {
+			destroyed = true;
+			SparseEntities = null;
+		}
+
 #if EZ_SANITY_CHECK
 		public string name;
 
@@ -145,6 +153,12 @@ namespace Leopotam.EcsLite {
 			removed.Clear();
 		}
 
+		public void Destroy() {
+			ClearQueues();
+			added = null;
+			removed = null;
+		}
+
 	}
 
 	public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
@@ -184,7 +198,23 @@ namespace Leopotam.EcsLite {
             _lockCount = 0;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+		public override void Destroy() {
+			base.Destroy();
+
+			_denseEntities = null;
+			_delayedOps = null;
+			_filterData = null;
+			
+			if (allInOutData != null) {
+				foreach (FilterInOutData fio in allInOutData) {
+					fio.Destroy();
+				}
+			}
+			allInOutData = null;
+
+		}
+
+		[MethodImpl (MethodImplOptions.AggressiveInlining)]
         public EcsWorld GetWorld () {
             return _world;
         }

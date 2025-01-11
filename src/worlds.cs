@@ -282,7 +282,11 @@ namespace Leopotam.EcsLite {
 			_pools = Array.Empty<IEcsPool>();
 			_poolHashes.Clear();
 			_hashedFilters.Clear();
+			foreach (EcsFilter filter in _allFilters) {
+				filter.Destroy();
+			}
 			_allFilters.Clear();
+
 			_filtersByIncludedComponents = Array.Empty<List<EcsFilter>>();
 			_filtersByExcludedComponents = Array.Empty<List<EcsFilter>>();
 #if LEOECSLITE_WORLD_EVENTS
@@ -291,6 +295,7 @@ namespace Leopotam.EcsLite {
 			}
 #endif
 			worlds[WorldArrayIdx] = null;
+			_masks = null;
 		}
 
 		/// <summary>
