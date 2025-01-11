@@ -1519,6 +1519,7 @@ namespace Leopotam.EcsLite {
 	[Il2CppSetOption (Option.NullChecks, false)]
 	[Il2CppSetOption (Option.ArrayBoundsChecks, false)]
 #endif
+
 		public sealed class Mask {
 			public struct BitMaskData {
 				internal UInt64 tagMaskSet;
@@ -1601,6 +1602,9 @@ namespace Leopotam.EcsLite {
 			void Reset() {
 				IncludeCount = 0;
 				ExcludeCount = 0;
+				bitmaskData.tagMaskNotSet = 0;
+				bitmaskData.tagMaskSet = 0;
+				bitmaskData.tagMaskSomeSet = 0;
 				Hash = 0;
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				_built = false;
