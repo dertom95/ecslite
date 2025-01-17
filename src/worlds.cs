@@ -162,6 +162,17 @@ namespace Leopotam.EcsLite {
 		private Action<EcsWorld,bool,bool, int> entityChangeCallback;
 		private Action<EcsWorld, int, bool, UInt64> tagChangeCallback;
 
+		public void Compare(EcsWorld other) {
+			Assert.AreEqual(Entities.Length, other.Entities.Length);
+			Assert.AreEqual(_entitiesCount, other._entitiesCount);
+			Assert.AreEqual(_recycledEntities.Count, other._recycledEntities.Count);
+			Assert.AreEqual(_pools.Length,other._pools.Length);
+			Assert.AreEqual(_poolsCount,other._poolsCount);
+			Assert.AreEqual(_poolDenseSize,other._poolDenseSize);
+			Assert.AreEqual(_poolRecycledSize,other._poolRecycledSize);
+			Assert.AreEqual(_poolHashes.Count, other._poolHashes.Count);
+		}
+
 		private List<Action<System.Type,EcsWorld>> worldChangedCallback = new List<Action<System.Type,EcsWorld>>();
 
 		public void AddWorldChangedListener(Action<System.Type,EcsWorld> cb) {
