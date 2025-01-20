@@ -163,7 +163,7 @@ namespace Leopotam.EcsLite {
 
 	public sealed class EcsFilter<T> : EcsFilter where T:IFilterData {
         readonly EcsWorld _world;
-        readonly EcsWorld.Mask _mask;
+        EcsWorld.Mask _mask;
         int[] _denseEntities;
         T[] _filterData=null;
         int _entitiesCount;
@@ -204,6 +204,7 @@ namespace Leopotam.EcsLite {
 			_denseEntities = null;
 			_delayedOps = null;
 			_filterData = null;
+			_mask = null;
 			
 			if (allInOutData != null) {
 				foreach (FilterInOutData fio in allInOutData) {

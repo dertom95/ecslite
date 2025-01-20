@@ -298,8 +298,9 @@ namespace Leopotam.EcsLite {
 			}
 			_allFilters.Clear();
 
-			_filtersByIncludedComponents = Array.Empty<List<EcsFilter>>();
-			_filtersByExcludedComponents = Array.Empty<List<EcsFilter>>();
+			_filtersByIncludedComponents = null;
+			_filtersByExcludedComponents = null;
+			_filtersByTagMask = null;
 #if LEOECSLITE_WORLD_EVENTS
 			for (var ii = _eventListeners.Count - 1; ii >= 0; ii--) {
 				_eventListeners[ii].OnWorldDestroyed (this);
