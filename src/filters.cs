@@ -265,7 +265,13 @@ namespace Leopotam.EcsLite {
             return SparseEntities;
         }
 
-        [MethodImpl (MethodImplOptions.AggressiveInlining)]
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public int GetRandomEntity() {
+			int randomEntity = _denseEntities[UnityEngine.Random.Range(0,_entitiesCount)];
+			return randomEntity;
+		}
+
+		[MethodImpl (MethodImplOptions.AggressiveInlining)]
         public Enumerator<T> GetEnumerator () {
             _lockCount++;
             return new Enumerator<T> (this);
