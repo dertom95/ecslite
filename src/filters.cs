@@ -267,6 +267,9 @@ namespace Leopotam.EcsLite {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public int GetRandomEntity() {
+			if (_entitiesCount == 0) { 
+				return 0; 
+			}
 			int randomEntity = _denseEntities[UnityEngine.Random.Range(0,_entitiesCount)];
 			return randomEntity;
 		}
