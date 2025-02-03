@@ -1063,11 +1063,22 @@ namespace Leopotam.EcsLite {
 			return _poolHashes.ContainsKey(poolType);
 		}
 
-		public EcsPool<T> GetPool<T>(int initialDenseSize = -1) where T : struct {
+		public IEcsPool GetRawPool<T>() {
 			var poolType = typeof(T);
 			if (_poolHashes.TryGetValue(poolType, out var rawPool)) {
+				return rawPool;
+			}
+			return null;
+		}
+
+		public EcsPool<T> GetPool<T>(int initialDenseSize = -1) where T : struct {
+			var poolType = typeof(T);
+
+			var rawPool = GetRawPool<T>();
+			if (rawPool != null) {
 				return (EcsPool<T>)rawPool;
 			}
+
 			int initalPoolDenseSize = initialDenseSize != -1 ? initialDenseSize : _poolDenseSize;
 			var pool = new EcsPool<T>(this, _poolsCount, initalPoolDenseSize, Entities.Length, _poolRecycledSize);
 			_poolHashes[poolType] = pool;
@@ -1083,9 +1094,12 @@ namespace Leopotam.EcsLite {
 
 		public ShallowPool GetShallowPool<T>() {
 			var poolType = typeof(T);
-			if (_poolHashes.TryGetValue(poolType, out var rawPool)) {
+
+			var rawPool = GetRawPool<T>();
+			if (rawPool != null) {
 				return (ShallowPool)rawPool;
 			}
+
 			var pool = new ShallowPool(this, _poolsCount);
 			_poolHashes[poolType] = pool;
 			if (_poolsCount == _pools.Length) {
@@ -1684,7 +1698,7 @@ namespace Leopotam.EcsLite {
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Mask Inc<T>() where T : struct {
-				var pool = _world.GetPool<T>();
+				var pool = _world.GetRawPool<T>();
 				var poolId = pool.GetId();
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				if (_built) { throw new Exception("Cant change built mask."); }
@@ -1695,7 +1709,10 @@ namespace Leopotam.EcsLite {
 					Array.Resize(ref Include, IncludeCount << 1);
 				}
 				Include[IncludeCount++] = poolId; // TODO: Include[] any use cases left? Keep it for now...
-				bitmaskData.componentMasks[pool._bitmaskFieldId] |= pool._componentBitmask;
+
+				(int bitmaskIdx, ulong componentBitmask)  = pool.BitmaskInfo;
+				
+				bitmaskData.componentMasks[bitmaskIdx] |= componentBitmask;
 				return this;
 			}
 
@@ -1704,7 +1721,7 @@ namespace Leopotam.EcsLite {
 #endif
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Mask Exc<T>() where T : struct {
-				var pool = _world.GetPool<T>();
+				var pool = _world.GetRawPool<T>();
 				var poolId = pool.GetId();
 
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
@@ -1716,7 +1733,9 @@ namespace Leopotam.EcsLite {
 					Array.Resize(ref Exclude, ExcludeCount << 1);
 				}
 				Exclude[ExcludeCount++] = poolId; // TODO: exclude deprecated. Any usecase left? Let's keep it for now
-				bitmaskData.componentMasks[pool._bitmaskFieldId + ENTITYDATA_AMOUNT_COMPONENT_BITMASKS] |= pool._componentBitmask;
+
+				(int bitmaskIdx, ulong componentBitmask) = pool.BitmaskInfo;
+				bitmaskData.componentMasks[bitmaskIdx + ENTITYDATA_AMOUNT_COMPONENT_BITMASKS] |= componentBitmask;
 				return this;
 			}
 

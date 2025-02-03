@@ -372,20 +372,27 @@ namespace Leopotam.EcsLite {
 			this.bitmaskIdx = bitmaskIdx;
 		}
 
-		public void Add(int entity) {
-			ref EntityData entityData = ref world.GetEntityData(entity);
+		public void Add(int packedEntity) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			ref EntityData entityData = ref world.GetEntityData(rawEntity);
 			
 			entityData.SetComponentBit(bitmaskIdx, bitmask);
+
+			EntityDataBitmask oldMask = entityData.SetComponentBit(bitmaskIdx, bitmask);
+			world.OnEntityChangeInternal(rawEntity, packedEntity, poolId, ref oldMask, true);
 		}
 
 		public void AddRaw(int entity, object dataRaw) {
 			throw new NotImplementedException();
 		}
 
-		public void Del(int entity) {
-			ref EntityData entityData = ref world.GetEntityData(entity);
+		public void Del(int packedEntity) {
+			int rawEntity = GetPackedRawEntityId(packedEntity);
+			ref EntityData entityData = ref world.GetEntityData(packedEntity);
 
-			entityData.UnsetComponentBit(bitmaskIdx, bitmask);
+			EntityDataBitmask oldMask = entityData.UnsetComponentBit(bitmaskIdx, bitmask);
+
+			world.OnEntityChangeInternal(rawEntity, packedEntity, poolId, ref oldMask, false);
 		}
 
 		public Type GetComponentType() {
