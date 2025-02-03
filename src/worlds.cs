@@ -1081,6 +1081,23 @@ namespace Leopotam.EcsLite {
 			return pool;
 		}
 
+		public ShallowPool GetShallowPool<T>() {
+			var poolType = typeof(T);
+			if (_poolHashes.TryGetValue(poolType, out var rawPool)) {
+				return (ShallowPool)rawPool;
+			}
+			var pool = new ShallowPool(this, _poolsCount);
+			_poolHashes[poolType] = pool;
+			if (_poolsCount == _pools.Length) {
+				var newSize = _poolsCount << 1;
+				Array.Resize(ref _pools, newSize);
+				Array.Resize(ref _filtersByIncludedComponents, newSize);
+				Array.Resize(ref _filtersByExcludedComponents, newSize);
+			}
+			_pools[_poolsCount++] = pool;
+			return pool;
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public IEcsPool GetPoolById(int typeId) {
 			Assert.IsTrue(typeId >= 0 && typeId < _poolsCount);	

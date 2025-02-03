@@ -7,6 +7,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
+using static Leopotam.EcsLite.EcsWorld;
 using static Leopotam.EcsLite.EcsWorld.EntityData;
 
 #if ENABLE_IL2CPP
@@ -47,6 +48,7 @@ namespace Leopotam.EcsLite {
 	public interface IEcsAutoReset<T> where T : struct {
 		void AutoReset(ref T c);
 	}
+
 
 #if ENABLE_IL2CPP
 	[Il2CppSetOption (Option.NullChecks, false)]
@@ -351,4 +353,70 @@ namespace Leopotam.EcsLite {
 
 		delegate void AutoResetHandler(ref T component);
 	}
+
+	public sealed class ShallowPool : IEcsPool {
+		public (int, ulong) BitmaskInfo => (bitmaskIdx,bitmask);
+
+		EcsWorld world;
+		int poolId;
+		int bitmaskIdx;
+		ulong bitmask;
+
+		public ShallowPool(EcsWorld world,int poolId) {
+			this.world = world;
+			this.poolId = poolId;
+		}
+
+		public void OverrideBitmask(int bitmaskIdx, ulong bitmask) {
+			this.bitmask = bitmask;
+			this.bitmaskIdx = bitmaskIdx;
+		}
+
+		public void Add(int entity) {
+			ref EntityData entityData = ref world.GetEntityData(entity);
+			
+			entityData.SetComponentBit(bitmaskIdx, bitmask);
+		}
+
+		public void AddRaw(int entity, object dataRaw) {
+			throw new NotImplementedException();
+		}
+
+		public void Del(int entity) {
+			ref EntityData entityData = ref world.GetEntityData(entity);
+
+			entityData.UnsetComponentBit(bitmaskIdx, bitmask);
+		}
+
+		public Type GetComponentType() {
+			throw new NotImplementedException();
+		}
+
+		public int GetId() {
+			return poolId;
+		}
+
+		public object GetRaw(int entity) {
+			throw new NotImplementedException();
+		}
+
+		public bool Has(int entity) {
+			ref EntityData entityData = ref world.GetEntityData(entity);
+			bool found = entityData.CheckSingleComponent(bitmaskIdx, bitmask);
+			return found;
+		}
+
+		public void Resize(int capacity) {
+			throw new NotImplementedException();
+		}
+
+		public void SetRaw(int entity, object dataRaw) {
+			throw new NotImplementedException();
+		}
+
+		public int SparseArraySize() {
+			throw new NotImplementedException();
+		}
+	}
+
 }
