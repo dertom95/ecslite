@@ -367,11 +367,11 @@ namespace Leopotam.EcsLite {
 			this.poolId = poolId;
 		}
 
-		public void OverrideBitmask(int bitmaskIdx, ulong bitmask) {
+		public void OverrideInternalBitmask(int bitmaskIdx, ulong bitmask) {
 			this.bitmask = bitmask;
 			this.bitmaskIdx = bitmaskIdx;
 		}
-
+		
 		public void Add(int packedEntity) {
 			int rawEntity = GetPackedRawEntityId(packedEntity);
 			ref EntityData entityData = ref world.GetEntityData(rawEntity);
