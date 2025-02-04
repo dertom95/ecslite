@@ -414,7 +414,6 @@ namespace Leopotam.EcsLite {
 		}
 
 		public void Resize(int capacity) {
-			throw new NotImplementedException();
 		}
 
 		public void SetRaw(int entity, object dataRaw) {

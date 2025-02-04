@@ -76,7 +76,7 @@ namespace Leopotam.EcsLite {
 		/// </summary>
 		public const UInt64 MASK_TAG_ENTITY_TYPE_INV = ~MASK_TAG_ENTITY_TYPE;
 
-		public const int ENTITYDATA_AMOUNT_COMPONENT_BITMASKS = 2;
+		public const int ENTITYDATA_AMOUNT_COMPONENT_BITMASKS = 3;
 
 		public const int ENTITYID_SHIFT_GEN = 19;
 		public const int ENTITYID_SHIFT_WORLD = 26;
@@ -1508,8 +1508,8 @@ namespace Leopotam.EcsLite {
 
 			unsafe {
 #if EZ_SANITY_CHECK
-				if (ENTITYDATA_AMOUNT_COMPONENT_BITMASKS != 2) {
-					throw new Exception("Mask check is only supported for 2 long-bitmasks! Modify check to fit to more or less! This is hardcoded due to performance!");
+				if (ENTITYDATA_AMOUNT_COMPONENT_BITMASKS != 3) {
+					throw new Exception("Mask check is only supported for 3 long-bitmasks! Modify check to fit to more or less! This is hardcoded due to performance!");
 				}
 #endif
 
@@ -1519,10 +1519,12 @@ namespace Leopotam.EcsLite {
 				// remark: componentMasks: 0+1=includeComponentMasks 2+3=excludeComponentMasks
 
 				includeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[0]) == filterBitmaskData.componentMasks[0]
-								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[1]) == filterBitmaskData.componentMasks[1];
+								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[1]) == filterBitmaskData.componentMasks[1]
+								&& (entityBitmask.componentsBitMask[2] & filterBitmaskData.componentMasks[2]) == filterBitmaskData.componentMasks[2];
 
-				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[2]) == 0
-								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[3]) == 0;
+				excludeComponentsApplies = (entityBitmask.componentsBitMask[0] & filterBitmaskData.componentMasks[3]) == 0
+								&& (entityBitmask.componentsBitMask[1] & filterBitmaskData.componentMasks[4]) == 0
+								&& (entityBitmask.componentsBitMask[2] & filterBitmaskData.componentMasks[5]) == 0;
 
 				//TODO: once we are sure this is working do merge all checks to one so that it stops checking on first fail!
 				return includeComponentsApplies && excludeComponentsApplies && tagsCompatible;
@@ -1767,11 +1769,13 @@ namespace Leopotam.EcsLite {
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskNotSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSet.GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.tagMaskSomeSet.GetHashCode());
-				Assert.AreEqual(4, bitmaskData.componentMasks.Length/*, "This HashAlgorithm expects componentMasks for Length 4(2 inc, 2 exc). Please modify accordingly"*/);
+				Assert.AreEqual(6, bitmaskData.componentMasks.Length/*, "This HashAlgorithm expects componentMasks for Length 4(2 inc, 2 exc). Please modify accordingly"*/);
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[0].GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[1].GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[2].GetHashCode());
 				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[3].GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[4].GetHashCode());
+				Hash = unchecked(Hash * 314159 + bitmaskData.componentMasks[5].GetHashCode());
 				Type type = typeof(T);
 				Hash = unchecked(Hash * 314159 + type.Name.GetHashCode());
 
@@ -1836,10 +1840,12 @@ namespace Leopotam.EcsLite {
 				public UInt64 c1;
 				[FieldOffset(2*sizeof(UInt64))]
 				public UInt64 c2;
+				[FieldOffset(3 * sizeof(UInt64))]
+				public UInt64 c3;
 #endif
 
 
-				 
+
 
 
 
