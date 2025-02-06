@@ -1092,15 +1092,15 @@ namespace Leopotam.EcsLite {
 			return pool;
 		}
 
-		public ShallowPool GetShallowPool<T>() {
+		public ShallowPool<T> GetShallowPool<T>() {
 			var poolType = typeof(T);
 
 			var rawPool = GetRawPool<T>();
 			if (rawPool != null) {
-				return (ShallowPool)rawPool;
+				return (ShallowPool<T>)rawPool;
 			}
 
-			var pool = new ShallowPool(this, _poolsCount);
+			var pool = new ShallowPool<T>(this, _poolsCount);
 			_poolHashes[poolType] = pool;
 			if (_poolsCount == _pools.Length) {
 				var newSize = _poolsCount << 1;

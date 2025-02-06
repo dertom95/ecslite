@@ -354,17 +354,24 @@ namespace Leopotam.EcsLite {
 		delegate void AutoResetHandler(ref T component);
 	}
 
-	public sealed class ShallowPool : IEcsPool {
+	public sealed class ShallowPool<T> : IEcsPool {
 		public (int, ulong) BitmaskInfo => (bitmaskIdx,bitmask);
 
 		EcsWorld world;
 		int poolId;
 		int bitmaskIdx;
 		ulong bitmask;
+		readonly Type type;
+		/// <summary>
+		/// Just a empty struct-instance to be returned bei GetRaw(..)
+		/// </summary>
+		readonly T returnData;
 
 		public ShallowPool(EcsWorld world,int poolId) {
 			this.world = world;
 			this.poolId = poolId;
+			this.type = typeof(T);
+			returnData = (T)Activator.CreateInstance(type);
 		}
 
 		public void OverrideInternalBitmask(int bitmaskIdx, ulong bitmask) {
@@ -383,7 +390,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		public void AddRaw(int entity, object dataRaw) {
-			throw new NotImplementedException();
+			Add(entity);
 		}
 
 		public void Del(int packedEntity) {
@@ -396,7 +403,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		public Type GetComponentType() {
-			throw new NotImplementedException();
+			return type;
 		}
 
 		public int GetId() {
@@ -404,7 +411,11 @@ namespace Leopotam.EcsLite {
 		}
 
 		public object GetRaw(int entity) {
-			throw new NotImplementedException();
+			if (Has(entity)) {
+				return returnData;
+			} else {
+				return null;
+			}
 		}
 
 		public bool Has(int entity) {
@@ -417,7 +428,7 @@ namespace Leopotam.EcsLite {
 		}
 
 		public void SetRaw(int entity, object dataRaw) {
-			throw new NotImplementedException();
+			Add(entity);
 		}
 
 		public int SparseArraySize() {
