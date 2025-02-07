@@ -1700,7 +1700,11 @@ namespace Leopotam.EcsLite {
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Mask Inc<T>() where T : struct {
-				var pool = _world.GetRawPool<T>();
+				IEcsPool pool = _world.GetRawPool<T>();
+				if (pool == null) {
+					UnityEngine.Debug.LogError($"Tried to include component to filter, that is not known in this world:{typeof(T)}");
+					return this;
+				}
 				var poolId = pool.GetId();
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
 				if (_built) { throw new Exception("Cant change built mask."); }
@@ -1724,6 +1728,10 @@ namespace Leopotam.EcsLite {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Mask Exc<T>() where T : struct {
 				var pool = _world.GetRawPool<T>();
+				if (pool == null) {
+					UnityEngine.Debug.LogError($"Tried to exclude component to filter, that is not known in this world:{typeof(T)}");
+					return this;
+				}
 				var poolId = pool.GetId();
 
 #if DEBUG && !LEOECSLITE_NO_SANITIZE_CHECKS
