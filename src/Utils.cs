@@ -60,6 +60,7 @@ public class GrowableStructArrayIndexOnly<T> where T : unmanaged {
 	/// </summary>
 	/// <param name="idx"></param>
 	public void RemoveOrdered(int idx) {
+		Assert.IsTrue(count > 0);
 		Assert.IsTrue(idx < count);
 		Array.Copy(data, idx + 1, data, idx, count - idx - 1);
 		count--;
