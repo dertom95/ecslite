@@ -247,6 +247,7 @@ namespace Leopotam.EcsLite {
 			allInOutData.Remove(inOutData);
 			if (allInOutData.Count == 0) {
 				allInOutData = null;
+				usingInOutMechanism = false;
 			}
 		}
 
