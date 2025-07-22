@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
+using UnityEngine;
 using UnityEngine.Assertions;
 using static Leopotam.EcsLite.EcsWorld.EntityData;
 
@@ -1572,8 +1573,11 @@ namespace Leopotam.EcsLite {
 
 		public sealed class Mask {
 			public struct BitMaskData {
+				[SerializeField]
 				internal UInt64 tagMaskSet;
+				[SerializeField]
 				internal UInt64 tagMaskNotSet;
+				[SerializeField]
 				internal UInt64 tagMaskSomeSet;
 
 				public UInt64 TagMaskSet => tagMaskSet;
